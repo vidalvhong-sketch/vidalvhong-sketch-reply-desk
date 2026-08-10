@@ -155,8 +155,39 @@ el('btnChangePw').addEventListener('click', async function(){
   }
 });
 
+async function loadCases(){
+  const box = el('casesBox');
+  box.className='muted'; box.textContent='Loading…';
+  try{
+    const agents = await api('GET','/api/admin/cases');
+    const total = agents.reduce((n,a)=>n+(a.cases?a.cases.length:0),0);
+    if(!total){ box.className='muted'; box.textContent='No cases saved by any agent yet.'; return; }
+    box.className='';
+    box.innerHTML = agents.filter(a=>a.cases&&a.cases.length).map(a=>{
+      const rows = a.cases.map(c=>{
+        const s=c.summary||{};
+        return '<tr><td>'+esc(c.timestamp||'')+'</td><td>'+esc(c.customer||'')+'</td>'+
+          '<td>'+esc(c.store||'')+'</td><td>'+esc(s.category||'')+'</td><td>'+esc(s.outcome||'')+'</td>'+
+          '<td><details><summary class="muted" style="cursor:pointer;">View</summary>'+
+          '<div style="margin-top:8px;"><div class="muted" style="margin-bottom:4px;">Customer email</div>'+
+          '<div style="white-space:pre-wrap;font-family:\'Courier New\',monospace;font-size:12px;background:#f6f3ec;border:1px solid #d8d1bf;padding:8px;border-radius:2px;margin-bottom:8px;">'+esc(c.email||'')+'</div>'+
+          '<div class="muted" style="margin-bottom:4px;">Draft reply</div>'+
+          '<div style="white-space:pre-wrap;font-family:Georgia,serif;font-size:13px;background:#f6f3ec;border:1px solid #d8d1bf;padding:8px;border-radius:2px;">'+esc(c.draft||'')+'</div></div>'+
+          '</details></td></tr>';
+      }).join('');
+      return '<div style="margin-bottom:16px;">'+
+        '<div style="font-family:\'Courier New\',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#5a5346;margin-bottom:6px;">'+
+        esc(a.name)+' <span class="muted">('+esc(a.username)+') — '+a.cases.length+' case(s)</span></div>'+
+        '<table><tr><th>Logged</th><th>Customer</th><th>Store</th><th>Category</th><th>Outcome</th><th></th></tr>'+rows+'</table></div>';
+    }).join('');
+  }catch(e){
+    box.className='muted'; box.textContent='Could not load cases: '+e.message;
+  }
+}
+
 el('btnReload').addEventListener('click', loadUsers);
 el('btnReloadActivity').addEventListener('click', loadActivity);
+el('btnReloadCases').addEventListener('click', loadCases);
 
 el('usersBox').addEventListener('click', async function(e){
   const rid = e.target.getAttribute('data-reset');
@@ -188,4 +219,5 @@ el('usersBox').addEventListener('click', async function(e){
   loadUsers();
   loadUsage();
   loadActivity();
+  loadCases();
 })();

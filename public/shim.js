@@ -19,6 +19,7 @@
 
   const mePromise = api('GET', '/api/me').catch(() => null);
   const isAdminRole = role => role === 'admin' || role === 'owner';
+  window.ME_PROMISE = mePromise; // let page scripts (e.g. index.html diagnostics) check role
 
   /* server-backed replacement for the artifact storage API */
   window.storage = {
@@ -93,7 +94,10 @@
       };
     }
 
-    if (!isAdminRole(me.role)) {
+    // Policy editing is owner-only. Admins have the same read-only view
+    // of store policies as agents do — admin access does not include
+    // editing shared policies.
+    if (me.role !== 'owner') {
       ['policyText', 'newStoreName', 'renameInput'].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.readOnly = true; el.disabled = true; }
@@ -105,9 +109,12 @@
       const n = document.getElementById('policyNotice');
       if (n) {
         n.className = 'noticeBox warn';
-        n.innerHTML = '<strong>Read-only</strong>Policies are maintained by your admin. ' +
+        n.innerHTML = '<strong>Read-only</strong>Policies are maintained by the owner. ' +
                       'Contact them if something needs updating.';
       }
+      // "Reset to Defaults" (Diagnostics tab) rewrites shared policy data — owner-only.
+      const rb = document.getElementById('resetBtn');
+      if (rb) rb.disabled = true;
     }
   });
 })();
