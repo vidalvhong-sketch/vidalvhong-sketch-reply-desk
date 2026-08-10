@@ -94,10 +94,9 @@
       };
     }
 
-    // Policy editing is owner-only. Admins have the same read-only view
-    // of store policies as agents do — admin access does not include
-    // editing shared policies.
-    if (me.role !== 'owner') {
+    // Policy editing is admin/owner. Agents get a read-only view of
+    // store policies.
+    if (!isAdminRole(me.role)) {
       ['policyText', 'newStoreName', 'renameInput'].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.readOnly = true; el.disabled = true; }
@@ -109,10 +108,12 @@
       const n = document.getElementById('policyNotice');
       if (n) {
         n.className = 'noticeBox warn';
-        n.innerHTML = '<strong>Read-only</strong>Policies are maintained by the owner. ' +
-                      'Contact them if something needs updating.';
+        n.innerHTML = '<strong>Read-only</strong>Policies are maintained by admins. ' +
+                      'Contact one if something needs updating.';
       }
-      // "Reset to Defaults" (Diagnostics tab) rewrites shared policy data — owner-only.
+    }
+    // "Reset to Defaults" (Diagnostics tab) rewrites shared policy data — owner-only.
+    if (me.role !== 'owner') {
       const rb = document.getElementById('resetBtn');
       if (rb) rb.disabled = true;
     }

@@ -786,21 +786,21 @@ runDiagBtn.addEventListener('click',async()=>{
     catch(e){ log('<span class="fail">✗ '+esc(l)+' — '+esc(e.message||String(e))+'</span>'); fail++; } };
   const skip=(l,why)=>log('<span class="dim">— '+esc(l)+' (skipped — '+esc(why)+')</span>');
   const me=window.ME_PROMISE?await window.ME_PROMISE.catch(()=>null):null;
-  const isOwner=me&&me.role==='owner';
+  const isAdmin=me&&(me.role==='owner'||me.role==='admin');
   log('<span class="dim">── Environment ──</span>');
   await t('window.storage exists',()=>{ if(!window.storage) throw new Error('undefined'); return typeof window.storage; });
   await t('storage.set is a function',()=>{ if(typeof window.storage?.set!=='function') throw new Error('missing'); return 'ok'; });
   await t('storage.get is a function',()=>{ if(typeof window.storage?.get!=='function') throw new Error('missing'); return 'ok'; });
   log('<span class="dim">── Shared storage (policies) ──</span>');
   const k='__diag_'+Date.now(), v='v-'+Math.random().toString(36).slice(2,8);
-  if(isOwner){
+  if(isAdmin){
     await t('write shared key',async()=>{ await window.storage.set(k,v,true); return k; });
     await t('read back shared key',async()=>{ const r=await window.storage.get(k,true); if(!r||r.value!==v) throw new Error('mismatch'); return 'matched'; });
     await t('delete shared key',async()=>{ await window.storage.delete(k,true); return 'cleaned up'; });
   } else {
-    skip('write shared key','policy edits are owner-only');
-    skip('read back shared key','policy edits are owner-only');
-    skip('delete shared key','policy edits are owner-only');
+    skip('write shared key','policy edits are admin/owner-only');
+    skip('read back shared key','policy edits are admin/owner-only');
+    skip('delete shared key','policy edits are admin/owner-only');
   }
   log('<span class="dim">── Personal storage (cases) ──</span>');
   const k2='__diagp_'+Date.now();
@@ -809,10 +809,10 @@ runDiagBtn.addEventListener('click',async()=>{
   await t('delete personal key',async()=>{ await window.storage.delete(k2,false); return 'cleaned up'; });
   log('<span class="dim">── Live app data ──</span>');
   await t('"stores" key readable',async()=>{ const val=await DB.get('stores',true); if(val==null) throw new Error('not saved yet'); const p=JSON.parse(val); return p.length+' store(s): '+p.map(x=>x.name).join(', '); });
-  if(isOwner){
+  if(isAdmin){
     await t('write current stores',async()=>{ await DB.set('stores',JSON.stringify(stores),true); return stores.length+' store(s) written'; });
   } else {
-    skip('write current stores','policy edits are owner-only');
+    skip('write current stores','policy edits are admin/owner-only');
   }
   log('');
   if(fail===0){ badge(diagBadge,'saved','✓ All '+pass+' passed'); log('<span class="pass">All checks passed — policies persist and sync to every agent.</span>'); }
