@@ -608,7 +608,31 @@ function extractJSON(txt){
   let t=txt.replace(/```json/gi,'').replace(/```/g,'').trim();
   const a=t.indexOf('{'), b=t.lastIndexOf('}');
   if(a===-1||b===-1) throw new Error('no JSON found');
-  return JSON.parse(t.slice(a,b+1));
+  let slice=t.slice(a,b+1);
+  try{ return JSON.parse(slice); }
+  catch(e){
+    // one repair pass for the most common small mistakes models make —
+    // trailing commas before a closing brace/bracket — then try again.
+    const repaired=slice.replace(/,(\s*[}\]])/g,'$1');
+    return JSON.parse(repaired);
+  }
+}
+// The model is asked for the reply and the summary as two clearly-delimited
+// sections rather than one JSON object. Putting a multi-paragraph, customer
+// facing email (quotes, apostrophes, emoji, line breaks) inside a JSON
+// string is fragile — one unescaped character anywhere in the prose breaks
+// the whole parse and dumps raw JSON into the reply box. Splitting on plain
+// text markers means the reply never needs JSON escaping at all, and only
+// the small, structured summary object needs to parse as JSON.
+const REPLY_MARK='===REPLY===', SUMMARY_MARK='===SUMMARY===';
+function parseGenResponse(txt){
+  const t=txt.trim();
+  const ri=t.indexOf(REPLY_MARK), si=t.indexOf(SUMMARY_MARK);
+  if(ri===-1||si===-1||si<ri) throw new Error('missing section markers');
+  const reply=t.slice(ri+REPLY_MARK.length, si).trim();
+  const summary=extractJSON(t.slice(si+SUMMARY_MARK.length).trim());
+  if(!reply) throw new Error('empty reply');
+  return {reply, summary};
 }
 
 /* ═══ GENERATE ═══ */
@@ -629,22 +653,25 @@ Reply rules:
 - Tone: ${tone}. Address the customer by name if given. Keep it focused and concise.
 - Sign off as "${agent} — ${st.name} Support Team".
 
-Return ONLY a JSON object — no markdown fences, no commentary — in exactly this shape:
+Return your response in EXACTLY this two-section format — no markdown fences, no commentary before, between, or after the sections, and no other text anywhere:
+
+===REPLY===
+the full email reply, plain text with real line breaks, ready to send as-is — this is customer-facing, so write it naturally with no JSON escaping of any kind
+===SUMMARY===
 {
-  "reply": "the full email body text, plain text with line breaks",
-  "summary": {
-    "emailSummary": "2-3 sentence digest of the incoming email: what happened, plus any order numbers, dates, amounts, or deadlines the customer mentioned",
-    "category": "2-4 word issue category",
-    "request": "what the customer is asking for, one sentence",
-    "sentiment": "one of: Calm, Neutral, Frustrated, Angry",
-    "policyApplied": "which specific policy rule governs this, one short sentence, or 'Not covered by policy'",
-    "resolution": "what the reply offers the customer, one sentence",
-    "outcome": "one of: Approved, Partially approved, Denied, Information provided, Escalation needed",
-    "escalate": "Yes or No",
-    "agentProcess": ["4-6 concrete steps the agent takes in order, each starting with a verb — verifying details in the system, checking eligibility against policy, actioning the refund/replacement/label, sending the reply, logging the disposition, setting any reminder"],
-    "followUp": "any action still owed after sending, or 'None'"
-  }
+  "emailSummary": "2-3 sentence digest of the incoming email: what happened, plus any order numbers, dates, amounts, or deadlines the customer mentioned",
+  "category": "2-4 word issue category",
+  "request": "what the customer is asking for, one sentence",
+  "sentiment": "one of: Calm, Neutral, Frustrated, Angry",
+  "policyApplied": "which specific policy rule governs this, one short sentence, or 'Not covered by policy'",
+  "resolution": "what the reply offers the customer, one sentence",
+  "outcome": "one of: Approved, Partially approved, Denied, Information provided, Escalation needed",
+  "escalate": "Yes or No",
+  "agentProcess": ["4-6 concrete steps the agent takes in order, each starting with a verb — verifying details in the system, checking eligibility against policy, actioning the refund/replacement/label, sending the reply, logging the disposition, setting any reminder"],
+  "followUp": "any action still owed after sending, or 'None'"
 }
+
+The ===SUMMARY=== section must be valid JSON and nothing else — no comments, no trailing commas.
 
 STORE POLICY:
 ${st.policy}`;
@@ -667,8 +694,15 @@ Produce the JSON now.`;
     const d=await r.json();
     const txt=(d.content||[]).map(b=>b.type==='text'?b.text:'').join('\n').trim();
     if(!txt) throw new Error("Empty response");
-    let p=null; try{ p=extractJSON(txt); }catch(e){ p=null; }
-    if(p&&p.reply){ draftEl.value=String(p.reply).trim(); renderSummary(p.summary||null); }
+    let parsed=null;
+    try{ parsed=parseGenResponse(txt); }
+    catch(e){
+      // fall back to the older single-JSON-object shape, in case the model
+      // ignored the section-marker instructions
+      try{ const p=extractJSON(txt); if(p&&p.reply) parsed={reply:String(p.reply).trim(), summary:p.summary||null}; }
+      catch(e2){ parsed=null; }
+    }
+    if(parsed){ draftEl.value=parsed.reply; renderSummary(parsed.summary||null); }
     else { draftEl.value=txt; renderSummary(null); setError('Draft generated, but the summary could not be parsed. The reply is still usable.'); }
     saveBtn.disabled=false;
   }catch(e){ setError("Couldn't generate. "+e.message); }
