@@ -56,20 +56,34 @@ CREATE TABLE IF NOT EXISTS activity_log(
 );
 `);
 
-// first-run account — this becomes the app's OWNER (there is exactly one).
+// Owner account — this becomes the app's OWNER (there is exactly one).
 // The owner role sits above admin: nobody, including other admins, can
 // modify or disable the owner's own login (see requireAdmin + the
 // owner-guard in PATCH /api/users/:id below). The owner can only change
 // their own credentials via /api/password, the same self-service path
 // everyone else uses.
-if (db.prepare('SELECT COUNT(*) c FROM users').get().c === 0) {
+//
+// This looks up the ADMIN_USER account specifically (rather than only
+// seeding when the whole users table is empty) so it also works as a
+// recovery path on a database that already has rows. Set FORCE_ADMIN_RESET=true
+// to force the ADMIN_USER account's password back to ADMIN_PASS and its role
+// to 'owner' on next boot — remove that env var again afterward so future
+// deploys don't keep stomping on a password the owner has since changed.
+{
   const u = process.env.ADMIN_USER || 'admin';
   const p = process.env.ADMIN_PASS || 'changeme123';
-  db.prepare(`INSERT INTO users(username,name,password_hash,role,created_at)
-              VALUES(?,?,?,?,?)`)
-    .run(u, process.env.ADMIN_NAME || 'Administrator',
-         bcrypt.hashSync(p, 10), 'owner', new Date().toISOString());
-  console.log(`✓ Created owner account "${u}" — sign in and change the password.`);
+  const existing = db.prepare('SELECT id FROM users WHERE username=?').get(u);
+  if (!existing) {
+    db.prepare(`INSERT INTO users(username,name,password_hash,role,created_at)
+                VALUES(?,?,?,?,?)`)
+      .run(u, process.env.ADMIN_NAME || 'Administrator',
+           bcrypt.hashSync(p, 10), 'owner', new Date().toISOString());
+    console.log(`✓ Created owner account "${u}" — sign in and change the password.`);
+  } else if (process.env.FORCE_ADMIN_RESET === 'true') {
+    db.prepare('UPDATE users SET password_hash=?, role=?, active=1 WHERE id=?')
+      .run(bcrypt.hashSync(p, 10), 'owner', existing.id);
+    console.log(`✓ FORCE_ADMIN_RESET: reset "${u}"'s password to ADMIN_PASS and promoted to owner.`);
+  }
 }
 
 function logActivity({ username, name, role, action, detail }) {
@@ -169,9 +183,11 @@ app.get('/api/kv/:key', requireAuth, (req, res) => {
 
 app.put('/api/kv/:key', requireAuth, (req, res) => {
   const shared = isShared(req.body?.shared);
-  // only admins (or the owner) may edit shared data (store policies)
-  if (shared && !isAdminRole(req.session.role))
-    return res.status(403).json({ error: 'Only an admin can edit store policies' });
+  // only the owner may edit shared data (store policies) — admins have
+  // view access to the app like everyone else, but policy edits are
+  // owner-only.
+  if (shared && req.session.role !== 'owner')
+    return res.status(403).json({ error: 'Only the owner can edit store policies' });
   const value = String(req.body?.value ?? '');
   if (value.length > 2_000_000) return res.status(413).json({ error: 'Too large' });
   db.prepare(`INSERT INTO kv(scope,key,value,updated_at) VALUES(?,?,?,?)
@@ -182,8 +198,8 @@ app.put('/api/kv/:key', requireAuth, (req, res) => {
 
 app.delete('/api/kv/:key', requireAuth, (req, res) => {
   const shared = isShared(req.query.shared);
-  if (shared && !isAdminRole(req.session.role))
-    return res.status(403).json({ error: 'Only an admin can edit store policies' });
+  if (shared && req.session.role !== 'owner')
+    return res.status(403).json({ error: 'Only the owner can edit store policies' });
   db.prepare('DELETE FROM kv WHERE scope=? AND key=?')
     .run(scopeOf(req, shared), req.params.key);
   res.json({ ok: true });
@@ -203,8 +219,8 @@ const CLIENT_ACTIONS = new Set([
 app.post('/api/activity', requireAuth, (req, res) => {
   const { action = '', detail = '' } = req.body || {};
   if (!CLIENT_ACTIONS.has(action)) return res.status(400).json({ error: 'Unknown action' });
-  if (action.startsWith('policy_') && !isAdminRole(req.session.role))
-    return res.status(403).json({ error: 'Admin only' });
+  if (action.startsWith('policy_') && req.session.role !== 'owner')
+    return res.status(403).json({ error: 'Owner only' });
   logActivity({
     username: req.session.username, name: req.session.name, role: req.session.role,
     action, detail
@@ -308,6 +324,28 @@ app.post('/api/users/:id/reset-default', requireOwner, (req, res) => {
     action: 'account_reset', detail: target.username
   });
   res.json({ ok: true, username: target.username, newPassword });
+});
+
+// Admin/owner oversight view: every agent's saved cases, read-only.
+// Cases are stored per-agent as a single JSON blob under kv key "cases"
+// in that agent's private scope ("u"+userId) — gather them all here.
+app.get('/api/admin/cases', requireAdmin, (_req, res) => {
+  const rows = db.prepare("SELECT scope, value FROM kv WHERE key='cases' AND scope LIKE 'u%'").all();
+  const users = new Map(db.prepare('SELECT id, username, name FROM users').all().map(u => [u.id, u]));
+  const out = [];
+  for (const row of rows) {
+    const uid = Number(row.scope.slice(1));
+    const u = users.get(uid);
+    let cases = [];
+    try { cases = JSON.parse(row.value) || []; } catch { cases = []; }
+    out.push({
+      userId: uid,
+      username: u ? u.username : '(deleted user)',
+      name: u ? u.name : '(deleted user)',
+      cases
+    });
+  }
+  res.json(out);
 });
 
 app.get('/api/usage', requireAdmin, (_req, res) => {
