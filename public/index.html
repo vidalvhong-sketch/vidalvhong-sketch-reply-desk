@@ -624,13 +624,20 @@ function extractJSON(txt){
 // the whole parse and dumps raw JSON into the reply box. Splitting on plain
 // text markers means the reply never needs JSON escaping at all, and only
 // the small, structured summary object needs to parse as JSON.
-const REPLY_MARK='===REPLY===', SUMMARY_MARK='===SUMMARY===';
+//
+// Only the ===SUMMARY=== marker is load-bearing — it's what separates the
+// reply from the summary. The leading ===REPLY=== marker is optional: the
+// model sometimes starts straight into the reply text without repeating
+// it, and that's fine as long as SUMMARY still shows up before the JSON.
+const REPLY_MARK_RE=/^={2,}\s*REPLY\s*={2,}/i;
+const SUMMARY_MARK_RE=/={2,}\s*SUMMARY\s*={2,}/i;
 function parseGenResponse(txt){
   const t=txt.trim();
-  const ri=t.indexOf(REPLY_MARK), si=t.indexOf(SUMMARY_MARK);
-  if(ri===-1||si===-1||si<ri) throw new Error('missing section markers');
-  const reply=t.slice(ri+REPLY_MARK.length, si).trim();
-  const summary=extractJSON(t.slice(si+SUMMARY_MARK.length).trim());
+  const m=t.match(SUMMARY_MARK_RE);
+  if(!m) throw new Error('missing summary marker');
+  const si=m.index;
+  const reply=t.slice(0,si).trim().replace(REPLY_MARK_RE,'').trim();
+  const summary=extractJSON(t.slice(si+m[0].length).trim());
   if(!reply) throw new Error('empty reply');
   return {reply, summary};
 }
