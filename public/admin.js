@@ -31,7 +31,8 @@ const ACTION_LABEL = {
   policy_deleted: 'Deleted a policy',
   case_added: 'Saved a case',
   case_deleted: 'Deleted a case',
-  account_reset: 'Reset an account to default'
+  account_reset: 'Reset an account to default',
+  account_created: 'Created an account'
 };
 
 function roleTag(role){
@@ -216,6 +217,14 @@ el('usersBox').addEventListener('click', async function(e){
 
 (async function init(){
   try{ ME = await api('GET','/api/me'); }catch(e){ ME = null; }
+  if(ME && ME.role==='owner'){
+    const sel = el('f_role');
+    if(sel && !sel.querySelector('option[value="owner"]')){
+      const opt = document.createElement('option');
+      opt.value = 'owner'; opt.textContent = 'Owner';
+      sel.appendChild(opt);
+    }
+  }
   loadUsers();
   loadUsage();
   loadActivity();
