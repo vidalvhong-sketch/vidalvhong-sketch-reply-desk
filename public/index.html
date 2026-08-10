@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Support Reply Desk</title>
+<script src="/shim.js"></script>
+<style>
+  :root{
+    --ink:#1f2421;--paper:#f6f3ec;--paper-2:#ece7da;--line:#d8d1bf;
+    --accent:#a5471f;--accent-soft:#e7d2c2;--ok:#3c6e47;--ok-soft:#d4ead9;
+    --warn:#7a5c00;--warn-soft:#fff8e7;--warn-line:#e8d48a;
+    --red:#8e2b1c;--red-soft:#fbe3de;--red-line:#e0a99e;
+    --mono:'Courier New',ui-monospace,monospace;
+    --serif:Georgia,'Times New Roman',serif;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);}
+  .wrap{max-width:1280px;margin:0 auto;padding:22px 20px 60px;}
+  header{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--ink);padding-bottom:13px;margin-bottom:16px;gap:14px;flex-wrap:wrap;}
+  .brand{display:flex;align-items:baseline;gap:12px;}
+  .brand .mark{font-family:var(--serif);font-weight:700;font-size:23px;letter-spacing:-0.5px;}
+  .brand .tag{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#6b6356;border-left:1px solid var(--line);padding-left:12px;}
+  .header-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .agent-wrap{display:flex;align-items:center;gap:8px;}
+  .agent-wrap label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b6356;}
+  .agent-wrap input{border:1px solid var(--line);background:var(--paper);padding:6px 10px;font-size:13px;border-radius:2px;color:var(--ink);width:150px;}
+  .tabs{display:flex;border-bottom:1px solid var(--line);margin-bottom:16px;flex-wrap:wrap;}
+  .tab{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:1px;padding:9px 16px;cursor:pointer;border:1px solid transparent;border-bottom:none;margin-bottom:-1px;color:#6b6356;border-radius:2px 2px 0 0;}
+  .tab.active{background:var(--paper-2);border-color:var(--line);color:var(--ink);}
+  .panel{background:var(--paper-2);border:1px solid var(--line);border-radius:2px;}
+  .panel h2{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:1.4px;margin:0;padding:11px 15px;border-bottom:1px solid var(--line);color:#5a5346;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+  .panel .body{padding:15px;}
+  .grid{display:grid;grid-template-columns:320px 1fr;gap:16px;}
+  .grid.policies{grid-template-columns:270px 1fr;}
+  @media(max-width:880px){.grid,.grid.policies{grid-template-columns:1fr;}}
+  textarea{width:100%;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-family:var(--mono);font-size:12.5px;line-height:1.55;padding:11px;border-radius:2px;resize:vertical;}
+  #emailText{height:150px;} #draftText{height:290px;font-family:var(--serif);font-size:15px;} #policyText{height:355px;}
+  label.small{display:block;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b6356;margin:0 0 6px;}
+  input[type=text]{width:100%;border:1px solid var(--line);background:var(--paper);padding:8px 10px;font-size:13.5px;border-radius:2px;color:var(--ink);font-family:var(--sans);}
+  select{width:100%;border:1px solid var(--line);background:var(--paper);padding:8px 10px;font-size:13px;border-radius:2px;color:var(--ink);font-family:var(--sans);}
+  .field{margin-bottom:13px;}
+  .btn{border:1px solid var(--ink);background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:9px 14px;border-radius:2px;cursor:pointer;transition:opacity .15s;}
+  .btn:hover{opacity:.85;} .btn:disabled{opacity:.35;cursor:default;}
+  .btn.secondary{background:transparent;color:var(--ink);}
+  .btn.accent{background:var(--accent);border-color:var(--accent);}
+  .btn.sm{padding:6px 10px;font-size:10px;}
+  .btn.danger{background:transparent;color:#b00;border-color:#b00;}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .toneRow{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:13px;}
+  .tonePill{font-family:var(--mono);font-size:10.5px;padding:5px 10px;border:1px solid var(--line);border-radius:20px;cursor:pointer;background:var(--paper);color:#5a5346;}
+  .tonePill.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);}
+  .hint{font-size:12px;color:#6b6356;font-style:italic;}
+  .errorBox{background:#fbeae3;border:1px solid var(--accent);color:var(--accent);padding:10px 12px;font-size:12.5px;border-radius:2px;margin-bottom:12px;display:none;}
+  .copiedTag{font-family:var(--mono);font-size:10px;color:var(--ok);opacity:0;transition:opacity .2s;}
+  .copiedTag.show{opacity:1;}
+  .spinner{display:inline-block;width:10px;height:10px;border:2px solid var(--paper);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;margin-right:6px;vertical-align:-1px;}
+  .spinner.dark{border-color:var(--ink);border-top-color:transparent;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .badge{font-family:var(--mono);font-size:10px;padding:3px 9px;border-radius:10px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;}
+  .badge.saving{background:var(--warn-soft);color:var(--warn);border:1px solid var(--warn-line);}
+  .badge.saved{background:var(--ok-soft);color:var(--ok);border:1px solid #a8d4af;}
+  .badge.error{background:#fbeae3;color:var(--accent);border:1px solid var(--accent);}
+  .badge.neutral{background:var(--paper);color:#6b6356;border:1px solid var(--line);}
+  .noticeBox{padding:11px 13px;border-radius:2px;font-size:12.5px;margin-bottom:14px;line-height:1.5;display:none;}
+  .noticeBox.ok{background:var(--ok-soft);border:1px solid #a8d4af;color:#2a4e30;display:block;}
+  .noticeBox.warn{background:var(--warn-soft);border:1px solid var(--warn-line);color:var(--warn);display:block;}
+  .noticeBox strong{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;}
+  .store-list{display:flex;flex-direction:column;gap:5px;}
+  .store-item{display:flex;align-items:center;padding:9px 11px;background:var(--paper);border:1px solid var(--line);border-radius:2px;cursor:pointer;font-size:13.5px;}
+  .store-item:hover{border-color:#b9b09a;}
+  .store-item.sel{border-color:var(--accent);background:var(--accent-soft);font-weight:600;}
+  .addRow{display:flex;gap:6px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line);}
+  .addRow input{flex:1;}
+
+  /* ── SUMMARY ── */
+  .sum-empty{color:#8a8270;font-family:var(--mono);font-size:11.5px;text-align:center;padding:26px 10px;line-height:1.7;}
+  .sec-label{font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:1.2px;color:#8a8270;margin:0 0 7px;padding-bottom:5px;border-bottom:1px solid var(--line);}
+  .sec{margin-bottom:15px;}
+  .digest{background:var(--paper);border-left:3px solid var(--accent);border-top:1px solid var(--line);border-right:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:2px;padding:11px 13px;font-size:13.5px;line-height:1.55;}
+  .sum-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:9px;}
+  .sum-item{background:var(--paper);border:1px solid var(--line);border-radius:2px;padding:9px 11px;}
+  .sum-item.full{grid-column:1/-1;}
+  .sum-label{font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:1px;color:#8a8270;margin-bottom:5px;}
+  .sum-val{font-size:13px;line-height:1.45;}
+  .chip{display:inline-block;font-family:var(--mono);font-size:10.5px;padding:3px 10px;border-radius:11px;letter-spacing:.4px;}
+  .chip.green{background:var(--ok-soft);color:var(--ok);border:1px solid #a8d4af;}
+  .chip.amber{background:var(--warn-soft);color:var(--warn);border:1px solid var(--warn-line);}
+  .chip.red{background:var(--red-soft);color:var(--red);border:1px solid var(--red-line);}
+  .chip.grey{background:var(--paper-2);color:#6b6356;border:1px solid var(--line);}
+  .flagBar{background:var(--red-soft);border:1px solid var(--red-line);color:var(--red);font-family:var(--mono);font-size:11px;padding:8px 11px;border-radius:2px;margin-bottom:12px;display:none;line-height:1.5;}
+  .flagBar.on{display:block;}
+
+  /* ── PROCESS CHECKLIST ── */
+  .proc{display:flex;flex-direction:column;gap:6px;}
+  .step{display:flex;align-items:flex-start;gap:10px;background:var(--paper);border:1px solid var(--line);border-radius:2px;padding:9px 11px;cursor:pointer;transition:background .12s;}
+  .step:hover{background:#fbf9f3;}
+  .step .num{flex:0 0 20px;height:20px;border-radius:50%;background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:10px;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+  .step .txt{font-size:13.5px;line-height:1.45;flex:1;}
+  .step .box{flex:0 0 15px;height:15px;border:1.5px solid var(--ink);border-radius:2px;margin-top:3px;display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1;color:transparent;}
+  .step.done{background:var(--ok-soft);border-color:#a8d4af;}
+  .step.done .txt{text-decoration:line-through;color:#6b8a70;}
+  .step.done .num{background:var(--ok);}
+  .step.done .box{background:var(--ok);border-color:var(--ok);color:#fff;}
+  .procProgress{font-family:var(--mono);font-size:10px;color:#6b6356;margin-top:8px;text-align:right;}
+
+  .cs-card{background:var(--paper);border:1px solid var(--line);border-radius:2px;overflow:hidden;margin-bottom:9px;}
+  .cs-head{display:flex;align-items:center;justify-content:space-between;padding:10px 13px;cursor:pointer;gap:12px;}
+  .cs-title{font-family:var(--mono);font-size:11.5px;font-weight:700;}
+  .cs-sub{font-family:var(--mono);font-size:10px;color:#6b6356;margin-top:2px;}
+  .cs-body{display:none;padding:13px;border-top:1px solid var(--line);background:var(--paper-2);}
+  .cs-body.open{display:block;}
+  .cs-text{font-family:var(--mono);font-size:12px;line-height:1.55;white-space:pre-wrap;background:var(--paper);border:1px solid var(--line);border-radius:2px;padding:10px;}
+  .cs-reply{font-family:var(--serif);font-size:14px;line-height:1.6;white-space:pre-wrap;background:var(--paper);border:1px solid var(--line);border-radius:2px;padding:10px;}
+  .cs-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:11px;flex-wrap:wrap;}
+  .empty{text-align:center;padding:44px 20px;color:#8a8270;font-family:var(--mono);font-size:12px;}
+  .count{font-family:var(--mono);font-size:10px;background:var(--accent);color:var(--paper);border-radius:10px;padding:1px 7px;margin-left:5px;}
+  .log{font-family:var(--mono);font-size:11.5px;line-height:1.7;background:var(--paper);border:1px solid var(--line);border-radius:2px;padding:12px;white-space:pre-wrap;max-height:300px;overflow:auto;}
+  .log .pass{color:var(--ok);} .log .fail{color:var(--accent);} .log .dim{color:#8a8270;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <span class="mark">Support Reply Desk</span>
+      <span class="tag">Policy-aware draft assistant</span>
+    </div>
+    <div class="header-right">
+      <div class="agent-wrap"><label>Agent</label><input type="text" id="agentName" placeholder="Your name…"></div>
+      <span class="badge neutral" id="syncBadge"><span class="spinner dark"></span>Starting…</span>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="desk">Reply Desk</div>
+    <div class="tab" data-tab="cases">My Cases <span class="count" id="caseCount">0</span></div>
+    <div class="tab" data-tab="policies">Store Policies</div>
+    <div class="tab" data-tab="diag">Diagnostics</div>
+  </div>
+
+  <!-- ══ REPLY DESK ══ -->
+  <div id="tab-desk">
+    <div class="grid">
+      <div>
+        <div class="panel" style="margin-bottom:15px;">
+          <h2>Active Store</h2>
+          <div class="body">
+            <select id="storeSelect"></select>
+            <div class="hint" style="margin-top:8px;">Manage stores in the Store Policies tab.</div>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>Customer Email</h2>
+          <div class="body">
+            <div class="field"><label class="small">Customer name (optional)</label><input type="text" id="custName" placeholder="e.g. Jordan"></div>
+            <div class="field"><label class="small">Incoming email</label><textarea id="emailText" spellcheck="false" placeholder="Paste the customer's email here…"></textarea></div>
+            <label class="small">Tone</label>
+            <div class="toneRow" id="toneRow">
+              <span class="tonePill active" data-tone="Warm and friendly">Warm &amp; friendly</span>
+              <span class="tonePill" data-tone="Brisk and professional">Brisk &amp; professional</span>
+              <span class="tonePill" data-tone="Apologetic and reassuring">Apologetic &amp; reassuring</span>
+              <span class="tonePill" data-tone="Firm but polite (policy enforcement)">Firm but polite</span>
+            </div>
+            <button class="btn accent" id="genBtn">Generate Draft</button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel" style="margin-bottom:15px;">
+          <h2>Case Summary
+            <span class="row" style="gap:9px;">
+              <span class="copiedTag" id="sumCopied">copied ✓</span>
+              <button class="btn secondary sm" id="copySumBtn" disabled>Copy Summary</button>
+            </span>
+          </h2>
+          <div class="body">
+            <div class="flagBar" id="flagBar"></div>
+            <div id="sumWrap"><div class="sum-empty">Generate a draft to see the case breakdown:<br>email digest · classification · policy applied · agent handling steps.</div></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Draft Reply
+            <span class="row" style="gap:9px;">
+              <span class="copiedTag" id="copiedTag">copied ✓</span>
+              <button class="btn secondary sm" id="copyBtn">Copy</button>
+              <button class="btn sm" id="saveBtn" disabled>Save to My Cases</button>
+            </span>
+          </h2>
+          <div class="body">
+            <div class="errorBox" id="errorBox"></div>
+            <div class="hint" style="margin-bottom:9px;">Editable — tweak before sending, then save.</div>
+            <textarea id="draftText" spellcheck="true" placeholder="Your generated reply will appear here."></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MY CASES ══ -->
+  <div id="tab-cases" style="display:none;">
+    <div class="noticeBox ok" style="display:block;"><strong>Personal case log</strong>Only you see these. Handling steps stay ticked between sessions.</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:13px;gap:10px;flex-wrap:wrap;">
+      <span class="hint">Click a card to expand the digest, steps, email, and reply.</span>
+      <button class="btn danger sm" id="clearCasesBtn">Clear All</button>
+    </div>
+    <div id="csList"></div>
+    <div class="empty" id="csEmpty">No cases yet. Generate a reply and click "Save to My Cases".</div>
+  </div>
+
+  <!-- ══ POLICIES ══ -->
+  <div id="tab-policies" style="display:none;">
+    <div class="noticeBox" id="policyNotice"></div>
+    <div class="grid policies">
+      <div class="panel">
+        <h2>Stores <span class="badge neutral" id="policyBadge">—</span></h2>
+        <div class="body">
+          <div class="store-list" id="storeList"></div>
+          <div class="addRow"><input type="text" id="newStoreName" placeholder="New store name…" maxlength="60"><button class="btn sm" id="addStoreBtn">Add</button></div>
+          <div class="hint" id="addHint" style="margin-top:8px;">Type a name and press Add (or hit Enter).</div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>Policy — <span id="activeLabel" style="font-weight:400;font-style:italic;text-transform:none;letter-spacing:0;">…</span></h2>
+        <div class="body">
+          <div class="row" style="margin-bottom:10px;">
+            <input type="text" id="renameInput" placeholder="Rename this store…" maxlength="60" style="flex:1;min-width:160px;">
+            <button class="btn secondary sm" id="renameBtn">Rename</button>
+            <button class="btn danger sm" id="deleteBtn">Delete</button>
+          </div>
+          <div class="hint" id="policyMeta" style="margin-bottom:9px;"></div>
+          <textarea id="policyText" spellcheck="false" placeholder="Type this store's policy here…"></textarea>
+          <div class="hint" style="margin-top:9px;">Auto-saves ~1s after you stop typing, then syncs to all agents.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ DIAGNOSTICS ══ -->
+  <div id="tab-diag" style="display:none;">
+    <div class="panel">
+      <h2>Storage Diagnostics <span class="badge neutral" id="diagBadge">Not run</span></h2>
+      <div class="body">
+        <p class="hint" style="margin-top:0;">Runs a real write → read → verify → delete cycle against shared and personal storage.</p>
+        <div class="row" style="margin-bottom:13px;">
+          <button class="btn accent" id="runDiagBtn">Run Storage Test</button>
+          <button class="btn secondary sm" id="dumpBtn">Show Saved Data</button>
+          <button class="btn danger sm" id="resetBtn">Reset to Defaults</button>
+        </div>
+        <div class="log" id="diagLog"><span class="dim">Click "Run Storage Test" to begin.</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+const DEFAULTS=[
+{name:"Riverstone Goods",policy:`STORE POLICY — Riverstone Goods
+
+RETURNS & EXCHANGES
+- Items may be returned within 30 days of delivery, unworn and with tags attached.
+- Customer pays return shipping unless item arrived defective or incorrect.
+- Refunds issued to original payment method within 5-7 business days.
+- Sale items marked "Final Sale" cannot be returned.
+
+SHIPPING
+- Standard: 5-8 business days. Express: 2-3 business days.
+- No PO boxes. Shipping method cannot be changed after dispatch.
+
+DAMAGED / INCORRECT ITEMS
+- Contact us within 14 days with photos — replacement or full refund.
+
+ORDER CHANGES & CANCELLATIONS
+- Changes/cancellations only within 1 hour of placing the order.
+
+DISCOUNT CODES
+- One code per order; cannot be applied retroactively.
+
+CONTACT
+- Mon-Fri 9am-6pm ET. Response within 1 business day.`},
+{name:"Northbloom Florals",policy:`STORE POLICY — Northbloom Florals
+
+ORDER CUTOFFS
+- Same-day local delivery for orders before 12pm. After 12pm: next available day.
+
+CANCELLATIONS
+- Cancel up to 3 hours before delivery window. None once the arrangement leaves the studio.
+
+QUALITY GUARANTEE
+- Flowers guaranteed fresh 5 days. Wilting early? Photo within 5 days for replacement or refund.
+
+DELIVERY ISSUES
+- Missed/delayed delivery → automatic 20% credit on next order.
+- Wrong address due to customer error: not eligible for free redelivery.
+
+SUBSCRIPTIONS
+- Pause or cancel any time from account page, effective next cycle.
+
+CONTACT
+- Tue-Sat 8am-4pm local. Response within a few hours.`},
+{name:"Pinecrest Electronics",policy:`STORE POLICY — Pinecrest Electronics
+
+RETURNS & EXCHANGES
+- 15-day return window for unopened items in original packaging.
+- Opened items: defective only → repair or replacement, not refund.
+- 10% restocking fee on opened non-defective returns (where permitted by law).
+
+WARRANTY
+- Manufacturer's standard warranty only. Extended plans via third-party provider.
+
+SHIPPING
+- Free standard shipping over $75. Items over $500 require signature.
+
+PRICE MATCHING
+- Match authorized retailer prices within 7 days. Excludes flash sales and clearance.
+
+CONTACT
+- Mon-Sun 7am-9pm ET. Response within 1 business day.`}];
+
+/* ═══ STORAGE ═══ */
+const DB={
+  ok:false, reason:'', mem:{},
+  async probe(){
+    try{
+      if(typeof window.storage==='undefined'||!window.storage) throw new Error('window.storage is not available');
+      const k='__probe_'+Date.now();
+      await window.storage.set(k,'ok',true);
+      const r=await window.storage.get(k,true);
+      if(!r||r.value!=='ok') throw new Error('probe read-back mismatch');
+      try{ await window.storage.delete(k,true); }catch(e){}
+      this.ok=true; this.reason='shared storage OK';
+    }catch(e){ this.ok=false; this.reason=(e&&e.message)?e.message:String(e); }
+    return this.ok;
+  },
+  key(k,s){ return (s?'S:':'P:')+k; },
+  async get(k,s){
+    if(!this.ok) return this.mem[this.key(k,s)]??null;
+    try{ const r=await window.storage.get(k,s); return (r&&r.value!=null)?r.value:null; }catch(e){ return null; }
+  },
+  async set(k,v,s){
+    this.mem[this.key(k,s)]=v;
+    if(!this.ok) throw new Error('storage unavailable: '+this.reason);
+    await window.storage.set(k,v,s);
+  }
+};
+
+/* ═══ STATE ═══ */
+let stores=[], sel=0, tone="Warm and friendly", cases=[], saveTimer=null;
+let currentSummary=null, currentDone=[];
+
+const $=id=>document.getElementById(id);
+const agentEl=$('agentName'), syncBadge=$('syncBadge'), policyBadge=$('policyBadge'),
+      policyNotice=$('policyNotice'), storeSelect=$('storeSelect'), storeList=$('storeList'),
+      policyText=$('policyText'), activeLabel=$('activeLabel'), newStoreName=$('newStoreName'),
+      addStoreBtn=$('addStoreBtn'), addHint=$('addHint'), renameInput=$('renameInput'),
+      renameBtn=$('renameBtn'), deleteBtn=$('deleteBtn'), emailEl=$('emailText'),
+      nameEl=$('custName'), draftEl=$('draftText'), genBtn=$('genBtn'), saveBtn=$('saveBtn'),
+      copyBtn=$('copyBtn'), copiedTag=$('copiedTag'), errorBox=$('errorBox'), toneRow=$('toneRow'),
+      csList=$('csList'), csEmpty=$('csEmpty'), caseCount=$('caseCount'), clearCasesBtn=$('clearCasesBtn'),
+      diagLog=$('diagLog'), diagBadge=$('diagBadge'), runDiagBtn=$('runDiagBtn'),
+      dumpBtn=$('dumpBtn'), resetBtn=$('resetBtn'), sumWrap=$('sumWrap'), flagBar=$('flagBar'),
+      copySumBtn=$('copySumBtn'), sumCopied=$('sumCopied');
+
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const ts=()=>new Date().toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+function badge(el,cls,txt){ el.className='badge '+cls; el.innerHTML=(cls==='saving'?'<span class="spinner dark"></span>':'')+txt; }
+function flash(el){ el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),1400); }
+
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    ['desk','cases','policies','diag'].forEach(id=>{ $('tab-'+id).style.display=(id===t.dataset.tab)?'':'none'; });
+  });
+});
+
+/* ═══ CHIPS ═══ */
+function chipFor(field,val){
+  const v=String(val||'').toLowerCase();
+  if(field==='sentiment'){
+    if(/angry|furious|hostile|irate/.test(v)) return 'red';
+    if(/frustrat|upset|annoy|concern|impatient|anxious/.test(v)) return 'amber';
+    if(/calm|happy|positive|polite|pleased/.test(v)) return 'green';
+    return 'grey';
+  }
+  if(field==='outcome'){
+    if(/escalat/.test(v)) return 'red';
+    if(/^approved|resolved|granted|full/.test(v)) return 'green';
+    if(/partial|conditional/.test(v)) return 'amber';
+    if(/denied|declined|refused|not eligible/.test(v)) return 'red';
+    return 'grey';
+  }
+  if(field==='escalate') return /^y|true|needed/.test(v)?'red':'green';
+  if(field==='policy') return /not covered|no policy|outside/.test(v)?'amber':'green';
+  return 'grey';
+}
+function asArray(x){
+  if(Array.isArray(x)) return x.filter(Boolean).map(String);
+  if(typeof x==='string'&&x.trim()) return x.split(/\n+|(?:^|\s)\d+[\.\)]\s+/).map(s=>s.trim()).filter(Boolean);
+  return [];
+}
+
+/* ═══ SUMMARY RENDER (desk) ═══ */
+function renderSummary(s){
+  currentSummary=s;
+  if(!s){
+    sumWrap.innerHTML='<div class="sum-empty">Generate a draft to see the case breakdown:<br>email digest · classification · policy applied · agent handling steps.</div>';
+    flagBar.className='flagBar'; copySumBtn.disabled=true; currentDone=[]; return;
+  }
+  copySumBtn.disabled=false;
+  const steps=asArray(s.agentProcess);
+  if(currentDone.length!==steps.length) currentDone=steps.map(()=>false);
+
+  const escalate=String(s.escalate||'No');
+  if(/^y|true|needed/i.test(escalate)){
+    flagBar.className='flagBar on';
+    flagBar.textContent='⚑ Escalation recommended — '+((s.followUp&&s.followUp!=='None')?s.followUp:'route to a supervisor before sending.');
+  } else flagBar.className='flagBar';
+
+  sumWrap.innerHTML=`
+    <div class="sec">
+      <div class="sec-label">Email digest — what the customer sent</div>
+      <div class="digest">${esc(s.emailSummary||s.request)}</div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-label">Classification</div>
+      <div class="sum-grid">
+        <div class="sum-item"><div class="sum-label">Category</div><div class="sum-val">${esc(s.category)}</div></div>
+        <div class="sum-item"><div class="sum-label">Sentiment</div><div class="sum-val"><span class="chip ${chipFor('sentiment',s.sentiment)}">${esc(s.sentiment)}</span></div></div>
+        <div class="sum-item"><div class="sum-label">Outcome</div><div class="sum-val"><span class="chip ${chipFor('outcome',s.outcome)}">${esc(s.outcome)}</span></div></div>
+        <div class="sum-item"><div class="sum-label">Escalation</div><div class="sum-val"><span class="chip ${chipFor('escalate',escalate)}">${esc(escalate)}</span></div></div>
+        <div class="sum-item full"><div class="sum-label">Customer request</div><div class="sum-val">${esc(s.request)}</div></div>
+        <div class="sum-item full"><div class="sum-label">Policy applied</div><div class="sum-val"><span class="chip ${chipFor('policy',s.policyApplied)}" style="margin-right:7px;">${/not covered|no policy|outside/i.test(s.policyApplied||'')?'Not covered':'Covered'}</span>${esc(s.policyApplied)}</div></div>
+        <div class="sum-item full"><div class="sum-label">Resolution offered</div><div class="sum-val">${esc(s.resolution)}</div></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-label">Agent handling process — tick as you go</div>
+      <div class="proc" id="procWrap">
+        ${steps.map((st,i)=>`<div class="step${currentDone[i]?' done':''}" data-step="${i}">
+            <div class="num">${i+1}</div><div class="box">✓</div><div class="txt">${esc(st)}</div>
+          </div>`).join('')}
+      </div>
+      <div class="procProgress" id="procProgress"></div>
+    </div>
+
+    <div class="sec" style="margin-bottom:0;">
+      <div class="sec-label">Follow-up after sending</div>
+      <div class="sum-item"><div class="sum-val">${esc(s.followUp)}</div></div>
+    </div>`;
+  updateProgress();
+}
+
+function updateProgress(){
+  const p=$('procProgress'); if(!p) return;
+  const done=currentDone.filter(Boolean).length;
+  p.textContent=done+' of '+currentDone.length+' steps complete';
+}
+
+sumWrap.addEventListener('click',e=>{
+  const st=e.target.closest('.step'); if(!st) return;
+  const i=parseInt(st.dataset.step,10);
+  currentDone[i]=!currentDone[i];
+  st.classList.toggle('done',currentDone[i]);
+  updateProgress();
+});
+
+/* ═══ SUMMARY → TEXT ═══ */
+function summaryToText(s,meta,done){
+  if(!s) return '';
+  const steps=asArray(s.agentProcess);
+  return ['CASE SUMMARY',
+    'Store: '+(meta&&meta.store?meta.store:''),
+    'Agent: '+(meta&&meta.agent?meta.agent:''),
+    'Customer: '+(meta&&meta.customer?meta.customer:''),
+    'Logged: '+((meta&&meta.timestamp)?meta.timestamp:ts()),
+    '',
+    'EMAIL DIGEST',
+    s.emailSummary||s.request,
+    '',
+    'CLASSIFICATION',
+    'Category: '+s.category,
+    'Request: '+s.request,
+    'Sentiment: '+s.sentiment,
+    'Policy applied: '+s.policyApplied,
+    'Resolution offered: '+s.resolution,
+    'Outcome: '+s.outcome,
+    'Escalation: '+s.escalate,
+    '',
+    'AGENT PROCESS',
+    steps.map((st,i)=>((done&&done[i])?'[x] ':'[ ] ')+(i+1)+'. '+st).join('\n'),
+    '',
+    'FOLLOW-UP',
+    s.followUp].join('\n');
+}
+
+copySumBtn.addEventListener('click',async()=>{
+  if(!currentSummary) return;
+  const txt=summaryToText(currentSummary,{store:stores[sel]?stores[sel].name:'',agent:agentEl.value.trim(),customer:nameEl.value.trim()||'(unnamed)',timestamp:ts()},currentDone);
+  try{ await navigator.clipboard.writeText(txt); }catch(e){}
+  flash(sumCopied);
+});
+
+/* ═══ STORES ═══ */
+function normalize(){
+  if(!Array.isArray(stores)) stores=[];
+  stores=stores.filter(s=>s&&typeof s.name==='string');
+  if(stores.length===0) stores=JSON.parse(JSON.stringify(DEFAULTS));
+  // backfill authorship metadata for stores saved before this feature existed
+  stores.forEach(s=>{
+    if(!s.addedBy){ s.addedBy='(default)'; s.addedAt=s.addedAt||null; }
+    if(!s.editedBy){ s.editedBy=s.addedBy; s.editedAt=s.editedAt||s.addedAt||null; }
+  });
+  if(sel>=stores.length||sel<0) sel=0;
+}
+function renderAll(){
+  normalize();
+  storeSelect.innerHTML='';
+  stores.forEach((s,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=s.name; storeSelect.appendChild(o); });
+  storeSelect.value=sel;
+  storeList.innerHTML='';
+  stores.forEach((s,i)=>{
+    const d=document.createElement('div');
+    d.className='store-item'+(i===sel?' sel':''); d.textContent=s.name;
+    d.addEventListener('click',()=>{ if(stores[sel]) stores[sel].policy=policyText.value; sel=i; renderAll(); });
+    storeList.appendChild(d);
+  });
+  const cur=stores[sel];
+  activeLabel.textContent=cur.name;
+  if(document.activeElement!==policyText) policyText.value=cur.policy||'';
+  renameInput.placeholder='Rename "'+cur.name+'"…';
+  deleteBtn.disabled=stores.length<=1;
+  renderMeta();
+}
+async function persist(now,meta){
+  clearTimeout(saveTimer); badge(policyBadge,'saving','Saving…');
+  const go=async()=>{
+    if(meta&&meta.type==='edit'&&stores[sel]&&meta.name===stores[sel].name){
+      stores[sel].editedBy=agentEl.value.trim()||'(unknown)';
+      stores[sel].editedAt=new Date().toISOString();
+    }
+    try{ await DB.set('stores',JSON.stringify(stores),true);
+      badge(policyBadge,'saved','✓ Saved & shared'); badge(syncBadge,'saved','✓ Synced');
+      if(meta&&meta.type){
+        const act=meta.type==='add'?'policy_added':(meta.type==='delete'?'policy_deleted':'policy_edited');
+        try{ window.logActivity(act,meta.name); }catch(e){}
+      }
+      renderMeta();
+    }catch(e){
+      badge(policyBadge,'error','⚠ '+(e.message||'Save failed')); badge(syncBadge,'error','⚠ Not syncing');
+      showNotice('warn','Not syncing to other agents','Reason: '+esc(e.message)+' — run the storage test in Diagnostics.');
+    }
+  };
+  if(now) await go(); else saveTimer=setTimeout(go,1000);
+}
+function renderMeta(){
+  const m=$('policyMeta'); if(!m) return;
+  const cur=stores[sel]; if(!cur){ m.textContent=''; return; }
+  const parts=[];
+  if(cur.addedBy) parts.push('Added by '+esc(cur.addedBy)+(cur.addedAt?' on '+new Date(cur.addedAt).toLocaleString():''));
+  if(cur.editedBy&&(cur.editedBy!==cur.addedBy||cur.editedAt!==cur.addedAt)) parts.push('last edited by '+esc(cur.editedBy)+(cur.editedAt?' on '+new Date(cur.editedAt).toLocaleString():''));
+  m.textContent=parts.length?parts.join(' · '):'';
+}
+function showNotice(k,t,b){ policyNotice.className='noticeBox '+k; policyNotice.innerHTML='<strong>'+t+'</strong>'+b; }
+
+async function addStore(){
+  const n=(newStoreName.value||'').trim();
+  if(!n){ addHint.textContent='⚠ Enter a store name first.'; newStoreName.focus(); return; }
+  if(stores.some(s=>s.name.toLowerCase()===n.toLowerCase())){ addHint.textContent='⚠ That store already exists.'; return; }
+  if(stores[sel]) stores[sel].policy=policyText.value;
+  const me=agentEl.value.trim()||'(unknown)', nowIso=new Date().toISOString();
+  stores.push({name:n,policy:'STORE POLICY — '+n+'\n\nReturns:\n- \n\nShipping:\n- \n\nRefunds:\n- \n\nContact:\n- ',
+    addedBy:me,addedAt:nowIso,editedBy:me,editedAt:nowIso});
+  sel=stores.length-1; newStoreName.value='';
+  addHint.textContent='✓ Added "'+n+'" — now fill in the policy on the right.';
+  renderAll(); await persist(true,{type:'add',name:n});
+}
+addStoreBtn.addEventListener('click',addStore);
+newStoreName.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); addStore(); }});
+renameBtn.addEventListener('click',async()=>{
+  const n=(renameInput.value||'').trim(); if(!n){ renameInput.focus(); return; }
+  stores[sel].name=n; renameInput.value=''; renderAll(); await persist(true,{type:'edit',name:n});
+});
+renameInput.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); renameBtn.click(); }});
+let delArm=false;
+deleteBtn.addEventListener('click',async()=>{
+  if(stores.length<=1) return;
+  if(!delArm){ delArm=true; deleteBtn.textContent='Confirm?'; setTimeout(()=>{delArm=false;deleteBtn.textContent='Delete';},3500); return; }
+  delArm=false; deleteBtn.textContent='Delete';
+  const deletedName=stores[sel].name;
+  stores.splice(sel,1); sel=0; renderAll(); await persist(true,{type:'delete',name:deletedName});
+});
+policyText.addEventListener('input',()=>{ if(!stores[sel]) return; stores[sel].policy=policyText.value; persist(false,{type:'edit',name:stores[sel].name}); });
+storeSelect.addEventListener('change',()=>{ sel=parseInt(storeSelect.value,10)||0; renderAll(); });
+toneRow.addEventListener('click',e=>{
+  const p=e.target.closest('.tonePill'); if(!p) return;
+  document.querySelectorAll('.tonePill').forEach(x=>x.classList.remove('active'));
+  p.classList.add('active'); tone=p.dataset.tone;
+});
+function setError(m){ errorBox.style.display=m?'block':'none'; errorBox.textContent=m||''; }
+function extractJSON(txt){
+  let t=txt.replace(/```json/gi,'').replace(/```/g,'').trim();
+  const a=t.indexOf('{'), b=t.lastIndexOf('}');
+  if(a===-1||b===-1) throw new Error('no JSON found');
+  return JSON.parse(t.slice(a,b+1));
+}
+
+/* ═══ GENERATE ═══ */
+genBtn.addEventListener('click',async()=>{
+  const email=emailEl.value.trim(), cust=nameEl.value.trim(), agent=agentEl.value.trim(), st=stores[sel];
+  if(!agent){ setError('Enter your agent name (top right) first.'); return; }
+  if(!email){ setError("Paste the customer's email before generating."); return; }
+  setError(null); genBtn.disabled=true; genBtn.innerHTML='<span class="spinner"></span>Drafting…';
+  saveBtn.disabled=true; renderSummary(null);
+
+  const sys=`You are a support operations assistant for ${st.name}. The handling agent is ${agent}.
+
+Produce (a) a reply email and (b) an internal case summary including the handling steps the agent should follow.
+
+Reply rules:
+- Base every policy claim strictly on the STORE POLICY below. Never invent policy details.
+- If something isn't covered, say so honestly and offer to escalate.
+- Tone: ${tone}. Address the customer by name if given. Keep it focused and concise.
+- Sign off as "${agent} — ${st.name} Support Team".
+
+Return ONLY a JSON object — no markdown fences, no commentary — in exactly this shape:
+{
+  "reply": "the full email body text, plain text with line breaks",
+  "summary": {
+    "emailSummary": "2-3 sentence digest of the incoming email: what happened, plus any order numbers, dates, amounts, or deadlines the customer mentioned",
+    "category": "2-4 word issue category",
+    "request": "what the customer is asking for, one sentence",
+    "sentiment": "one of: Calm, Neutral, Frustrated, Angry",
+    "policyApplied": "which specific policy rule governs this, one short sentence, or 'Not covered by policy'",
+    "resolution": "what the reply offers the customer, one sentence",
+    "outcome": "one of: Approved, Partially approved, Denied, Information provided, Escalation needed",
+    "escalate": "Yes or No",
+    "agentProcess": ["4-6 concrete steps the agent takes in order, each starting with a verb — verifying details in the system, checking eligibility against policy, actioning the refund/replacement/label, sending the reply, logging the disposition, setting any reminder"],
+    "followUp": "any action still owed after sending, or 'None'"
+  }
+}
+
+STORE POLICY:
+${st.policy}`;
+
+  const usr=`Customer name: ${cust||'(not given — use a friendly generic greeting)'}
+
+Customer email:
+"""
+${email}
+"""
+
+Produce the JSON now.`;
+
+  try{
+    const r=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,system:sys,messages:[{role:"user",content:usr}]})
+    });
+    if(!r.ok) throw new Error("API status "+r.status);
+    const d=await r.json();
+    const txt=(d.content||[]).map(b=>b.type==='text'?b.text:'').join('\n').trim();
+    if(!txt) throw new Error("Empty response");
+    let p=null; try{ p=extractJSON(txt); }catch(e){ p=null; }
+    if(p&&p.reply){ draftEl.value=String(p.reply).trim(); renderSummary(p.summary||null); }
+    else { draftEl.value=txt; renderSummary(null); setError('Draft generated, but the summary could not be parsed. The reply is still usable.'); }
+    saveBtn.disabled=false;
+  }catch(e){ setError("Couldn't generate. "+e.message); }
+  finally{ genBtn.disabled=false; genBtn.textContent='Generate Draft'; }
+});
+
+copyBtn.addEventListener('click',async()=>{
+  if(!draftEl.value.trim()) return;
+  try{ await navigator.clipboard.writeText(draftEl.value); }
+  catch(e){ draftEl.select(); try{document.execCommand('copy');}catch(e2){} }
+  flash(copiedTag);
+  try{ window.logActivity('draft_copied',(stores[sel]?stores[sel].name:'')+' / '+(nameEl.value.trim()||'(unnamed)')); }catch(e){}
+});
+
+/* ═══ CASES ═══ */
+saveBtn.addEventListener('click',async()=>{
+  const d=draftEl.value.trim(); if(!d) return;
+  cases.unshift({id:Date.now(),agent:agentEl.value.trim()||'(unnamed)',store:stores[sel].name,
+    customer:nameEl.value.trim()||'(unnamed)',tone,email:emailEl.value.trim(),draft:d,
+    summary:currentSummary,done:currentDone.slice(),timestamp:ts()});
+  try{ await DB.set('cases',JSON.stringify(cases),false); }catch(e){}
+  renderCases(); saveBtn.disabled=true;
+  try{ window.logActivity('case_added',stores[sel].name+' / '+(nameEl.value.trim()||'(unnamed)')); }catch(e){}
+});
+async function saveCases(){ try{ await DB.set('cases',JSON.stringify(cases),false); }catch(e){} }
+
+function caseSummaryHTML(c){
+  const s=c.summary;
+  if(!s) return '<div class="hint">No summary captured for this case.</div>';
+  const steps=asArray(s.agentProcess);
+  const done=Array.isArray(c.done)?c.done:steps.map(()=>false);
+  return `
+    <div class="sec"><div class="sec-label">Email digest</div><div class="digest">${esc(s.emailSummary||s.request)}</div></div>
+    <div class="sec"><div class="sec-label">Classification</div>
+      <div class="sum-grid">
+        <div class="sum-item"><div class="sum-label">Category</div><div class="sum-val">${esc(s.category)}</div></div>
+        <div class="sum-item"><div class="sum-label">Sentiment</div><div class="sum-val"><span class="chip ${chipFor('sentiment',s.sentiment)}">${esc(s.sentiment)}</span></div></div>
+        <div class="sum-item"><div class="sum-label">Outcome</div><div class="sum-val"><span class="chip ${chipFor('outcome',s.outcome)}">${esc(s.outcome)}</span></div></div>
+        <div class="sum-item"><div class="sum-label">Escalation</div><div class="sum-val"><span class="chip ${chipFor('escalate',s.escalate)}">${esc(s.escalate)}</span></div></div>
+        <div class="sum-item full"><div class="sum-label">Request</div><div class="sum-val">${esc(s.request)}</div></div>
+        <div class="sum-item full"><div class="sum-label">Policy applied</div><div class="sum-val">${esc(s.policyApplied)}</div></div>
+        <div class="sum-item full"><div class="sum-label">Resolution</div><div class="sum-val">${esc(s.resolution)}</div></div>
+      </div>
+    </div>
+    <div class="sec"><div class="sec-label">Agent handling process — ${done.filter(Boolean).length}/${steps.length} done</div>
+      <div class="proc">${steps.map((st,i)=>`<div class="step${done[i]?' done':''}" data-case="${c.id}" data-step="${i}">
+        <div class="num">${i+1}</div><div class="box">✓</div><div class="txt">${esc(st)}</div></div>`).join('')}</div>
+    </div>
+    <div class="sec"><div class="sec-label">Follow-up</div><div class="sum-item"><div class="sum-val">${esc(s.followUp)}</div></div></div>`;
+}
+
+function renderCases(){
+  caseCount.textContent=cases.length;
+  csList.innerHTML=''; csEmpty.style.display=cases.length?'none':'block';
+  cases.forEach((c,i)=>{
+    const s=c.summary;
+    const steps=s?asArray(s.agentProcess):[];
+    const done=Array.isArray(c.done)?c.done.filter(Boolean).length:0;
+    const chips=(s?`<span class="chip ${chipFor('outcome',s.outcome)}">${esc(s.outcome)}</span>`:'<span class="chip grey">No summary</span>')+
+      (steps.length?` <span class="chip ${done===steps.length?'green':'grey'}">${done}/${steps.length} steps</span>`:'');
+    const el=document.createElement('div'); el.className='cs-card';
+    el.innerHTML='<div class="cs-head"><div><div class="cs-title">Case #'+(cases.length-i)+' — '+esc(c.customer)+' @ '+esc(c.store)+'</div>'+
+      '<div class="cs-sub">'+esc(c.timestamp)+' · Agent: '+esc(c.agent)+' · '+esc(s?s.category:c.tone)+'</div></div>'+
+      '<div class="row" style="gap:6px;">'+chips+'</div></div>'+
+      '<div class="cs-body" id="csb-'+c.id+'">'+caseSummaryHTML(c)+
+      '<div class="sec"><div class="sec-label">Customer email</div><div class="cs-text">'+esc(c.email)+'</div></div>'+
+      '<div class="sec" style="margin-bottom:0;"><div class="sec-label">Draft reply</div><div class="cs-reply">'+esc(c.draft)+'</div></div>'+
+      '<div class="cs-foot"><button class="btn secondary sm" data-sum="'+c.id+'">Copy Summary</button>'+
+      '<button class="btn secondary sm" data-copy="'+c.id+'">Copy Reply</button>'+
+      '<button class="btn danger sm" data-del="'+c.id+'">Delete</button></div></div>';
+    el.querySelector('.cs-head').addEventListener('click',()=>$('csb-'+c.id).classList.toggle('open'));
+    csList.appendChild(el);
+  });
+}
+
+csList.addEventListener('click',async e=>{
+  const step=e.target.closest('.step');
+  if(step&&step.dataset.case){
+    const c=cases.find(x=>x.id==step.dataset.case);
+    if(c){
+      const i=parseInt(step.dataset.step,10);
+      const steps=asArray(c.summary&&c.summary.agentProcess);
+      if(!Array.isArray(c.done)||c.done.length!==steps.length) c.done=steps.map(()=>false);
+      c.done[i]=!c.done[i];
+      await saveCases();
+      const open=$('csb-'+c.id).classList.contains('open');
+      renderCases();
+      if(open) $('csb-'+c.id).classList.add('open');
+    }
+    return;
+  }
+  const cp=e.target.getAttribute('data-copy'), dl=e.target.getAttribute('data-del'), sm=e.target.getAttribute('data-sum');
+  if(cp){ const c=cases.find(x=>x.id==cp); if(c){ try{ await navigator.clipboard.writeText(c.draft); }catch(e2){}
+    try{ window.logActivity('draft_copied',c.store+' / '+c.customer+' (from saved case)'); }catch(e2){} } }
+  if(sm){ const c=cases.find(x=>x.id==sm); if(c){ try{ await navigator.clipboard.writeText(summaryToText(c.summary,c,c.done)); }catch(e2){} } }
+  if(dl){
+    const delCase=cases.find(x=>x.id==dl);
+    cases=cases.filter(x=>x.id!=dl); await saveCases(); renderCases();
+    if(delCase){ try{ window.logActivity('case_deleted',delCase.store+' / '+delCase.customer); }catch(e2){} }
+  }
+});
+clearCasesBtn.addEventListener('click',async()=>{
+  const n=cases.length;
+  cases=[]; await saveCases(); renderCases();
+  if(n){ try{ window.logActivity('case_deleted','Cleared all '+n+' case(s)'); }catch(e){} }
+});
+agentEl.addEventListener('change',async()=>{ try{ await DB.set('agentName',agentEl.value.trim(),false); }catch(e){} });
+
+/* ═══ DIAGNOSTICS ═══ */
+function log(h){ diagLog.innerHTML+=h+'\n'; diagLog.scrollTop=diagLog.scrollHeight; }
+runDiagBtn.addEventListener('click',async()=>{
+  diagLog.innerHTML=''; badge(diagBadge,'saving','Running…'); runDiagBtn.disabled=true;
+  let pass=0,fail=0;
+  const t=async(l,fn)=>{ try{ const m=await fn(); log('<span class="pass">✓ '+esc(l)+'</span>'+(m?' <span class="dim">— '+esc(m)+'</span>':'')); pass++; }
+    catch(e){ log('<span class="fail">✗ '+esc(l)+' — '+esc(e.message||String(e))+'</span>'); fail++; } };
+  log('<span class="dim">── Environment ──</span>');
+  await t('window.storage exists',()=>{ if(!window.storage) throw new Error('undefined'); return typeof window.storage; });
+  await t('storage.set is a function',()=>{ if(typeof window.storage?.set!=='function') throw new Error('missing'); return 'ok'; });
+  await t('storage.get is a function',()=>{ if(typeof window.storage?.get!=='function') throw new Error('missing'); return 'ok'; });
+  log('<span class="dim">── Shared storage (policies) ──</span>');
+  const k='__diag_'+Date.now(), v='v-'+Math.random().toString(36).slice(2,8);
+  await t('write shared key',async()=>{ await window.storage.set(k,v,true); return k; });
+  await t('read back shared key',async()=>{ const r=await window.storage.get(k,true); if(!r||r.value!==v) throw new Error('mismatch'); return 'matched'; });
+  await t('delete shared key',async()=>{ await window.storage.delete(k,true); return 'cleaned up'; });
+  log('<span class="dim">── Personal storage (cases) ──</span>');
+  const k2='__diagp_'+Date.now();
+  await t('write personal key',async()=>{ await window.storage.set(k2,v,false); return k2; });
+  await t('read back personal key',async()=>{ const r=await window.storage.get(k2,false); if(!r||r.value!==v) throw new Error('mismatch'); return 'matched'; });
+  await t('delete personal key',async()=>{ await window.storage.delete(k2,false); return 'cleaned up'; });
+  log('<span class="dim">── Live app data ──</span>');
+  await t('"stores" key readable',async()=>{ const val=await DB.get('stores',true); if(val==null) throw new Error('not saved yet'); const p=JSON.parse(val); return p.length+' store(s): '+p.map(x=>x.name).join(', '); });
+  await t('write current stores',async()=>{ await DB.set('stores',JSON.stringify(stores),true); return stores.length+' store(s) written'; });
+  log('');
+  if(fail===0){ badge(diagBadge,'saved','✓ All '+pass+' passed'); log('<span class="pass">All checks passed — policies persist and sync to every agent.</span>'); }
+  else { badge(diagBadge,'error','✗ '+fail+' failed'); log('<span class="fail">'+fail+' check(s) failed. Screenshot this log and send it back.</span>'); }
+  runDiagBtn.disabled=false;
+});
+dumpBtn.addEventListener('click',async()=>{
+  diagLog.innerHTML='';
+  const s=await DB.get('stores',true), c=await DB.get('cases',false);
+  log('<span class="dim">── stores (shared) ──</span>');
+  log(s?esc(JSON.stringify(JSON.parse(s).map(x=>({name:x.name,chars:(x.policy||'').length})),null,2)):'<span class="fail">(nothing saved)</span>');
+  log('<span class="dim">── cases (personal) ──</span>');
+  log(c?esc(JSON.parse(c).length+' case(s) saved'):'<span class="dim">(none)</span>');
+});
+resetBtn.addEventListener('click',async()=>{
+  stores=JSON.parse(JSON.stringify(DEFAULTS)); sel=0; renderAll(); await persist(true);
+  diagLog.innerHTML='<span class="pass">✓ Reset to the 3 default stores and saved.</span>';
+});
+
+/* ═══ INIT ═══ */
+(async()=>{
+  badge(syncBadge,'saving','Connecting…');
+  await DB.probe();
+  const raw=await DB.get('stores',true);
+  if(raw){ try{ stores=JSON.parse(raw); }catch(e){ stores=JSON.parse(JSON.stringify(DEFAULTS)); } }
+  else stores=JSON.parse(JSON.stringify(DEFAULTS));
+  normalize();
+  if(DB.ok){
+    if(!raw){ try{ await DB.set('stores',JSON.stringify(stores),true); }catch(e){} }
+    badge(syncBadge,'saved','✓ Synced'); badge(policyBadge,'saved','✓ Shared');
+    showNotice('ok','🌐 Shared across all agents','Edits here save automatically and reach every agent using this link.');
+  } else {
+    badge(syncBadge,'error','⚠ Local only'); badge(policyBadge,'error','⚠ Local only');
+    showNotice('warn','Shared storage unavailable','Reason: '+esc(DB.reason)+'. You can still work — changes just stay in this session.');
+  }
+  const cs=await DB.get('cases',false);
+  if(cs){ try{ cases=JSON.parse(cs); }catch(e){ cases=[]; } }
+  const an=await DB.get('agentName',false); if(an) agentEl.value=an;
+  renderAll(); renderCases(); renderSummary(null);
+})().catch(e=>{
+  badge(syncBadge,'error','⚠ Init error');
+  stores=JSON.parse(JSON.stringify(DEFAULTS)); sel=0; renderAll(); renderCases();
+});
+</script>
+</body>
+</html>

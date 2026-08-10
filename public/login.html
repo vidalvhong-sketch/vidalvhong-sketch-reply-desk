@@ -1,0 +1,42 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign in — Reply Desk</title>
+<style>
+ body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+      background:#f6f3ec;color:#1f2421;
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;}
+ .card{background:#ece7da;border:1px solid #d8d1bf;border-radius:2px;padding:30px;width:340px;}
+ h1{font-family:Georgia,serif;font-size:22px;margin:0 0 4px;}
+ .sub{font-family:'Courier New',monospace;font-size:10px;text-transform:uppercase;
+      letter-spacing:1.4px;color:#6b6356;margin-bottom:22px;}
+ label{display:block;font-family:'Courier New',monospace;font-size:10px;text-transform:uppercase;
+       letter-spacing:1px;color:#6b6356;margin:0 0 6px;}
+ input{width:100%;border:1px solid #d8d1bf;background:#f6f3ec;padding:9px 10px;font-size:14px;
+       border-radius:2px;margin-bottom:14px;box-sizing:border-box;}
+ button{width:100%;border:1px solid #a5471f;background:#a5471f;color:#f6f3ec;
+        font-family:'Courier New',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;
+        padding:11px;border-radius:2px;cursor:pointer;}
+ .err{background:#fbeae3;border:1px solid #a5471f;color:#a5471f;padding:9px 11px;font-size:12.5px;
+      border-radius:2px;margin-bottom:14px;display:none;}
+</style></head><body>
+<div class="card">
+  <h1>Support Reply Desk</h1>
+  <div class="sub">Agent sign-in</div>
+  <div class="err" id="err"></div>
+  <label>Username</label><input id="u" autocomplete="username" autofocus>
+  <label>Password</label><input id="p" type="password" autocomplete="current-password">
+  <button id="go">Sign in</button>
+</div>
+<script>
+const err=document.getElementById('err');
+async function go(){
+  err.style.display='none';
+  const r=await fetch('/api/login',{method:'POST',headers:{'content-type':'application/json'},
+    body:JSON.stringify({username:u.value,password:p.value})});
+  if(r.ok) location.href='/';
+  else { const d=await r.json().catch(()=>({})); err.textContent=d.error||'Sign-in failed';
+         err.style.display='block'; }
+}
+document.getElementById('go').onclick=go;
+[u,p].forEach(el=>el.addEventListener('keydown',e=>{if(e.key==='Enter')go();}));
+</script></body></html>

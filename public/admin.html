@@ -1,0 +1,74 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin — Reply Desk</title>
+<style>
+ body{margin:0;background:#f6f3ec;color:#1f2421;
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;}
+ .wrap{max-width:900px;margin:0 auto;padding:26px 20px 60px;}
+ h1{font-family:Georgia,serif;font-size:23px;margin:0;}
+ header{display:flex;justify-content:space-between;align-items:center;
+        border-bottom:2px solid #1f2421;padding-bottom:12px;margin-bottom:20px;}
+ .panel{background:#ece7da;border:1px solid #d8d1bf;border-radius:2px;margin-bottom:18px;}
+ .panel h2{font-family:'Courier New',monospace;font-size:11px;text-transform:uppercase;
+           letter-spacing:1.4px;margin:0;padding:11px 15px;border-bottom:1px solid #d8d1bf;color:#5a5346;
+           display:flex;justify-content:space-between;align-items:center;}
+ .bd{padding:15px;}
+ table{width:100%;border-collapse:collapse;font-size:13.5px;}
+ th{font-family:'Courier New',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1px;
+    color:#6b6356;text-align:left;padding:7px 9px;border-bottom:1px solid #d8d1bf;}
+ td{padding:9px;border-bottom:1px solid #e3ddcc;}
+ input,select{border:1px solid #d8d1bf;background:#f6f3ec;padding:8px 10px;font-size:13.5px;
+              border-radius:2px;font-family:inherit;}
+ .btn{border:1px solid #1f2421;background:#1f2421;color:#f6f3ec;font-family:'Courier New',monospace;
+      font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:7px 12px;border-radius:2px;
+      cursor:pointer;text-decoration:none;display:inline-block;}
+ .btn.sec{background:transparent;color:#1f2421;}
+ .row{display:flex;gap:9px;flex-wrap:wrap;align-items:center;}
+ .msg{font-size:13px;margin-top:12px;padding:9px 11px;border-radius:2px;display:none;}
+ .msg.ok{display:block;background:#d4ead9;border:1px solid #a8d4af;color:#2a4e30;}
+ .msg.bad{display:block;background:#fbeae3;border:1px solid #a5471f;color:#a5471f;}
+ .tag{font-family:'Courier New',monospace;font-size:10px;padding:2px 8px;border-radius:9px;
+      background:#e7d2c2;color:#a5471f;}
+ .tag.owner{background:#1f2421;color:#f6f3ec;}
+ .muted{color:#8a8270;font-family:'Courier New',monospace;font-size:12px;}
+ .hidden{display:none !important;}
+</style></head><body>
+<div class="wrap">
+  <header><h1>Admin</h1><a href="/" class="btn sec">← Reply Desk</a></header>
+
+  <div class="panel"><h2>My account</h2><div class="bd">
+    <div class="row">
+      <input id="pw_current" type="password" placeholder="current password" style="width:180px;">
+      <input id="pw_next" type="password" placeholder="new password (8+)" style="width:180px;">
+      <button class="btn sec" id="btnChangePw">Change my password</button>
+    </div>
+    <div class="msg" id="pwMsg"></div>
+  </div></div>
+
+  <div class="panel"><h2>Add agent</h2><div class="bd">
+    <div class="row">
+      <input id="f_name" placeholder="Full name" style="flex:1;min-width:150px;">
+      <input id="f_user" placeholder="username" style="width:150px;">
+      <input id="f_pass" placeholder="password (8+)" style="width:160px;">
+      <select id="f_role"><option value="agent">Agent</option><option value="admin">Admin</option></select>
+      <button class="btn" id="btnAdd">Create</button>
+    </div>
+    <div class="muted" style="margin-top:9px;">Username: lowercase letters, numbers, dots, dashes. No spaces or @.</div>
+    <div class="msg" id="addMsg"></div>
+  </div></div>
+
+  <div class="panel"><h2>Accounts <button class="btn sec" id="btnReload">Reload</button></h2>
+    <div class="bd"><div id="usersBox" class="muted">Loading…</div></div></div>
+
+  <div class="panel"><h2>Usage</h2>
+    <div class="bd"><div id="usageBox" class="muted">Loading…</div></div></div>
+
+  <div class="panel"><h2>Agent Activity History <button class="btn sec" id="btnReloadActivity">Reload</button></h2>
+    <div class="bd">
+      <div class="muted" style="margin-bottom:9px;">Logins, drafts generated/copied, policy changes, and case add/delete — who did what, and when.</div>
+      <div id="activityBox" class="muted">Loading…</div>
+    </div></div>
+</div>
+
+<script src="/admin.js"></script>
+</body></html>
