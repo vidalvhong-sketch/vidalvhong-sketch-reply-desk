@@ -183,11 +183,10 @@ app.get('/api/kv/:key', requireAuth, (req, res) => {
 
 app.put('/api/kv/:key', requireAuth, (req, res) => {
   const shared = isShared(req.body?.shared);
-  // only the owner may edit shared data (store policies) — admins have
-  // view access to the app like everyone else, but policy edits are
-  // owner-only.
-  if (shared && req.session.role !== 'owner')
-    return res.status(403).json({ error: 'Only the owner can edit store policies' });
+  // shared data (store policies) can be added/edited by admins and the
+  // owner; agents get a read-only view.
+  if (shared && !isAdminRole(req.session.role))
+    return res.status(403).json({ error: 'Only admins can edit store policies' });
   const value = String(req.body?.value ?? '');
   if (value.length > 2_000_000) return res.status(413).json({ error: 'Too large' });
   db.prepare(`INSERT INTO kv(scope,key,value,updated_at) VALUES(?,?,?,?)
@@ -198,8 +197,8 @@ app.put('/api/kv/:key', requireAuth, (req, res) => {
 
 app.delete('/api/kv/:key', requireAuth, (req, res) => {
   const shared = isShared(req.query.shared);
-  if (shared && req.session.role !== 'owner')
-    return res.status(403).json({ error: 'Only the owner can edit store policies' });
+  if (shared && !isAdminRole(req.session.role))
+    return res.status(403).json({ error: 'Only admins can edit store policies' });
   db.prepare('DELETE FROM kv WHERE scope=? AND key=?')
     .run(scopeOf(req, shared), req.params.key);
   res.json({ ok: true });
@@ -219,8 +218,8 @@ const CLIENT_ACTIONS = new Set([
 app.post('/api/activity', requireAuth, (req, res) => {
   const { action = '', detail = '' } = req.body || {};
   if (!CLIENT_ACTIONS.has(action)) return res.status(400).json({ error: 'Unknown action' });
-  if (action.startsWith('policy_') && req.session.role !== 'owner')
-    return res.status(403).json({ error: 'Owner only' });
+  if (action.startsWith('policy_') && !isAdminRole(req.session.role))
+    return res.status(403).json({ error: 'Admin only' });
   logActivity({
     username: req.session.username, name: req.session.name, role: req.session.role,
     action, detail
