@@ -375,6 +375,9 @@ app.get('/login', (_req, res) => res.sendFile(page('login.html')));
 app.get('/', (req, res) => req.session.uid ? res.sendFile(page('index.html')) : res.redirect('/login'));
 app.get('/admin', (req, res) =>
   isAdminRole(req.session.role) ? res.sendFile(page('admin.html')) : res.redirect('/'));
-app.use(express.static(path.join(__dirname, 'public'), { index: false }));
+app.use(express.static(path.join(__dirname, 'public'), {
+  index: false,
+  setHeaders: res => res.setHeader('Cache-Control', 'no-cache, must-revalidate')
+}));
 
 app.listen(PORT, () => console.log(`Reply Desk running on port ${PORT}`));
