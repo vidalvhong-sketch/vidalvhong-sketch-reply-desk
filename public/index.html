@@ -618,26 +618,56 @@ function extractJSON(txt){
   }
 }
 // The model is asked for the reply and the summary as two clearly-delimited
-// sections rather than one JSON object. Putting a multi-paragraph, customer
-// facing email (quotes, apostrophes, emoji, line breaks) inside a JSON
-// string is fragile — one unescaped character anywhere in the prose breaks
-// the whole parse and dumps raw JSON into the reply box. Splitting on plain
-// text markers means the reply never needs JSON escaping at all, and only
-// the small, structured summary object needs to parse as JSON.
+// sections. Putting a multi-paragraph, customer-facing email (quotes,
+// apostrophes, emoji, line breaks) inside a JSON string is fragile — one
+// unescaped character anywhere in the prose breaks the whole parse. Even
+// asking for JSON in the much smaller summary turned out not to be
+// reliable enough: models routinely leave an apostrophe or quoted phrase
+// unescaped in a summary field, which breaks JSON.parse just the same.
+// So neither section is JSON. The reply is plain text. The summary is
+// LABEL: value lines — no quoting or escaping rules for the model to get
+// wrong, and nothing for the client to fail to parse.
 //
 // Only the ===SUMMARY=== marker is load-bearing — it's what separates the
 // reply from the summary. The leading ===REPLY=== marker is optional: the
 // model sometimes starts straight into the reply text without repeating
-// it, and that's fine as long as SUMMARY still shows up before the JSON.
+// it, and that's fine as long as SUMMARY still shows up before the labels.
 const REPLY_MARK_RE=/^={2,}\s*REPLY\s*={2,}/i;
 const SUMMARY_MARK_RE=/={2,}\s*SUMMARY\s*={2,}/i;
+const SUMMARY_FIELD_MAP={
+  EMAIL_SUMMARY:'emailSummary', CATEGORY:'category', REQUEST:'request',
+  SENTIMENT:'sentiment', POLICY_APPLIED:'policyApplied', RESOLUTION:'resolution',
+  OUTCOME:'outcome', ESCALATE:'escalate', FOLLOW_UP:'followUp'
+};
+function parseSummaryBlock(text){
+  const out={}; let current=null, inProcess=false; const agentProcess=[];
+  for(const raw of text.split('\n')){
+    const line=raw.trim();
+    if(!line) continue;
+    const m=line.match(/^([A-Z_]+)\s*:\s*(.*)$/);
+    const key=m&&m[1];
+    if(key==='AGENT_PROCESS'){
+      inProcess=true; current=null;
+      if(m[2]) agentProcess.push(m[2].replace(/^[-*\d.)\s]+/,'').trim());
+    } else if(key&&SUMMARY_FIELD_MAP[key]){
+      inProcess=false; current=SUMMARY_FIELD_MAP[key]; out[current]=m[2].trim();
+    } else if(inProcess){
+      agentProcess.push(line.replace(/^[-*\d.)\s]+/,'').trim());
+    } else if(current){
+      out[current]+=' '+line;
+    }
+  }
+  out.agentProcess=agentProcess.filter(Boolean);
+  if(!out.emailSummary&&!out.category) throw new Error('summary block had no recognizable fields');
+  return out;
+}
 function parseGenResponse(txt){
   const t=txt.trim();
   const m=t.match(SUMMARY_MARK_RE);
   if(!m) throw new Error('missing summary marker');
   const si=m.index;
   const reply=t.slice(0,si).trim().replace(REPLY_MARK_RE,'').trim();
-  const summary=extractJSON(t.slice(si+m[0].length).trim());
+  const summary=parseSummaryBlock(t.slice(si+m[0].length).trim());
   if(!reply) throw new Error('empty reply');
   return {reply, summary};
 }
@@ -663,22 +693,24 @@ Reply rules:
 Return your response in EXACTLY this two-section format — no markdown fences, no commentary before, between, or after the sections, and no other text anywhere:
 
 ===REPLY===
-the full email reply, plain text with real line breaks, ready to send as-is — this is customer-facing, so write it naturally with no JSON escaping of any kind
+the full email reply, plain text with real line breaks, ready to send as-is — write it naturally, exactly as you'd send it, with normal quotes and apostrophes
 ===SUMMARY===
-{
-  "emailSummary": "2-3 sentence digest of the incoming email: what happened, plus any order numbers, dates, amounts, or deadlines the customer mentioned",
-  "category": "2-4 word issue category",
-  "request": "what the customer is asking for, one sentence",
-  "sentiment": "one of: Calm, Neutral, Frustrated, Angry",
-  "policyApplied": "which specific policy rule governs this, one short sentence, or 'Not covered by policy'",
-  "resolution": "what the reply offers the customer, one sentence",
-  "outcome": "one of: Approved, Partially approved, Denied, Information provided, Escalation needed",
-  "escalate": "Yes or No",
-  "agentProcess": ["4-6 concrete steps the agent takes in order, each starting with a verb — verifying details in the system, checking eligibility against policy, actioning the refund/replacement/label, sending the reply, logging the disposition, setting any reminder"],
-  "followUp": "any action still owed after sending, or 'None'"
-}
+EMAIL_SUMMARY: 2-3 sentence digest of the incoming email — what happened, plus any order numbers, dates, amounts, or deadlines the customer mentioned
+CATEGORY: 2-4 word issue category
+REQUEST: what the customer is asking for, one sentence
+SENTIMENT: one of Calm, Neutral, Frustrated, Angry
+POLICY_APPLIED: which specific policy rule governs this, one short sentence, or "Not covered by policy"
+RESOLUTION: what the reply offers the customer, one sentence
+OUTCOME: one of Approved, Partially approved, Denied, Information provided, Escalation needed
+ESCALATE: Yes or No
+FOLLOW_UP: any action still owed after sending, or "None"
+AGENT_PROCESS:
+1. first concrete step the agent takes, starting with a verb
+2. second step
+3. third step
+(4-6 steps total — verifying details in the system, checking eligibility against policy, actioning the refund/replacement/label, sending the reply, logging the disposition, setting any reminder)
 
-The ===SUMMARY=== section must be valid JSON and nothing else — no comments, no trailing commas.
+Each SUMMARY line must be plain text on one line — no quotes needed, no JSON, no markdown. Keep every field to the single line it's on.
 
 STORE POLICY:
 ${st.policy}`;
@@ -690,7 +722,7 @@ Customer email:
 ${email}
 """
 
-Produce the JSON now.`;
+Produce the response now, in the exact two-section format described.`;
 
   try{
     const r=await fetch("https://api.anthropic.com/v1/messages",{
