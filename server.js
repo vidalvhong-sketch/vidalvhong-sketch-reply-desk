@@ -280,12 +280,20 @@ app.post('/api/users', requireAdmin, (req, res) => {
   if (!/^[a-z0-9._-]{3,32}$/.test(u)) return res.status(400).json({ error: 'Username: 3-32 chars, letters/numbers/._-' });
   if (password.length < 8) return res.status(400).json({ error: 'Password must be 8+ characters' });
   if (!name.trim()) return res.status(400).json({ error: 'Full name required' });
-  // 'owner' can never be granted through this endpoint — there is exactly
-  // one owner, set only at first boot from ADMIN_USER/ADMIN_PASS.
+  // Only the owner can grant the 'owner' role to a new account — regular
+  // admins are still limited to creating 'admin' or 'agent' accounts.
+  if (role === 'owner' && req.session.role !== 'owner')
+    return res.status(403).json({ error: 'Only the owner can create another owner account' });
+  const grantedRole = role === 'owner' ? (req.session.role === 'owner' ? 'owner' : 'agent')
+                     : role === 'admin' ? 'admin' : 'agent';
   try {
     db.prepare(`INSERT INTO users(username,name,password_hash,role,created_at) VALUES(?,?,?,?,?)`)
       .run(u, name.trim(), bcrypt.hashSync(password, 10),
-           role === 'admin' ? 'admin' : 'agent', new Date().toISOString());
+           grantedRole, new Date().toISOString());
+    logActivity({
+      username: req.session.username, name: req.session.name, role: req.session.role,
+      action: 'account_created', detail: `created ${grantedRole} account "${u}"`
+    });
     res.json({ ok: true });
   } catch { res.status(409).json({ error: 'That username already exists' }); }
 });
@@ -316,6 +324,10 @@ app.post('/api/users/:id/reset-default', requireOwner, (req, res) => {
   const id = Number(req.params.id);
   const target = db.prepare('SELECT id, username, role FROM users WHERE id=?').get(id);
   if (!target) return res.status(404).json({ error: 'No such user' });
+  // Even with multiple owner accounts, one owner can't reset another
+  // owner's password this way — each owner manages their own credentials
+  // via the self-service /api/password route.
+  if (target.role === 'owner') return res.status(403).json({ error: "An owner's login can only be changed by that owner" });
   const newPassword = randomBytes(9).toString('base64url'); // 12-char URL-safe random password
   db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(bcrypt.hashSync(newPassword, 10), id);
   logActivity({
