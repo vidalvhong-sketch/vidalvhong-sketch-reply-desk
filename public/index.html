@@ -37,7 +37,7 @@
   textarea{width:100%;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-family:var(--mono);font-size:12.5px;line-height:1.55;padding:11px;border-radius:2px;resize:vertical;}
   #emailText{height:150px;} #draftText{height:290px;font-family:var(--serif);font-size:15px;} #policyText{height:355px;}
   label.small{display:block;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b6356;margin:0 0 6px;}
-  input[type=text]{width:100%;border:1px solid var(--line);background:var(--paper);padding:8px 10px;font-size:13.5px;border-radius:2px;color:var(--ink);font-family:var(--sans);}
+  input[type=text],input[type=password]{width:100%;border:1px solid var(--line);background:var(--paper);padding:8px 10px;font-size:13.5px;border-radius:2px;color:var(--ink);font-family:var(--sans);}
   select{width:100%;border:1px solid var(--line);background:var(--paper);padding:8px 10px;font-size:13px;border-radius:2px;color:var(--ink);font-family:var(--sans);}
   .field{margin-bottom:13px;}
   .btn{border:1px solid var(--ink);background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:9px 14px;border-radius:2px;cursor:pointer;transition:opacity .15s;}
@@ -136,7 +136,7 @@
     <div class="tab active" data-tab="desk">Reply Desk</div>
     <div class="tab" data-tab="cases">My Cases <span class="count" id="caseCount">0</span></div>
     <div class="tab" data-tab="policies">Store Policies</div>
-    <div class="tab" data-tab="diag">Diagnostics</div>
+    <div class="tab" data-tab="diag">Diagnostics</div><div class="tab" data-tab="storeinfo">Store Info</div>
   </div>
 
   <!-- ══ REPLY DESK ══ -->
@@ -255,7 +255,7 @@
   </div>
 </div>
 
-<script>
+<!-- ══ STORE INFO ══ --><div id="tab-storeinfo" style="display:none;"><div class="noticeBox" id="storeInfoNotice"></div><div class="panel"><h2>Store Info — <span id="infoActiveLabel" style="font-weight:400;font-style:italic;text-transform:none;letter-spacing:0;">…</span></h2><div class="body"><div class="field"><label class="small">Client owner</label><input type="text" id="infoOwner" placeholder="Name of the client / account owner"></div><div class="field"><label class="small">Login email</label><div class="row" style="gap:6px;"><input type="text" id="infoEmail" placeholder="e.g. owner@store.com" style="flex:1;"><button class="btn secondary sm" id="copyEmailBtn" type="button" data-label="Copy">Copy</button></div></div><div class="field"><label class="small">Login password</label><div class="row" style="gap:6px;"><input type="password" id="infoPassword" placeholder="Password" style="flex:1;"><button class="btn secondary sm" id="infoPassToggle" type="button">Show</button><button class="btn secondary sm" id="copyPassBtn" type="button" data-label="Copy">Copy</button></div></div><div class="field"><label class="small">Other platforms that need access</label><textarea id="infoPlatforms" spellcheck="false" placeholder="e.g. Shopify admin — same login, ask owner for 2FA; ShipStation — separate login, owner has it; …" style="height:180px;"></textarea></div><div class="hint" style="margin-top:9px;">Auto-saves ~1s after you stop typing, then syncs to all agents. Admins/owner can edit — everyone can view.</div></div></div></div><script>
 'use strict';
 
 const DEFAULTS=[
@@ -358,7 +358,7 @@ const agentEl=$('agentName'), syncBadge=$('syncBadge'), policyBadge=$('policyBad
       policyText=$('policyText'), activeLabel=$('activeLabel'), newStoreName=$('newStoreName'),
       addStoreBtn=$('addStoreBtn'), addHint=$('addHint'), renameInput=$('renameInput'),
       renameBtn=$('renameBtn'), deleteBtn=$('deleteBtn'), emailEl=$('emailText'),
-      nameEl=$('custName'), draftEl=$('draftText'), genBtn=$('genBtn'), saveBtn=$('saveBtn'), clearBtn=$('clearBtn'),
+      nameEl=$('custName'), draftEl=$('draftText'), genBtn=$('genBtn'), saveBtn=$('saveBtn'), clearBtn=$('clearBtn'), infoOwner=$('infoOwner'), infoEmail=$('infoEmail'), infoPassword=$('infoPassword'), infoPlatforms=$('infoPlatforms'), infoActiveLabel=$('infoActiveLabel'), infoPassToggle=$('infoPassToggle'), copyEmailBtn=$('copyEmailBtn'), copyPassBtn=$('copyPassBtn'),
       copyBtn=$('copyBtn'), copiedTag=$('copiedTag'), errorBox=$('errorBox'), toneRow=$('toneRow'),
       csList=$('csList'), csEmpty=$('csEmpty'), caseCount=$('caseCount'), clearCasesBtn=$('clearCasesBtn'),
       diagLog=$('diagLog'), diagBadge=$('diagBadge'), runDiagBtn=$('runDiagBtn'),
@@ -374,7 +374,7 @@ document.querySelectorAll('.tab').forEach(t=>{
   t.addEventListener('click',()=>{
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
     t.classList.add('active');
-    ['desk','cases','policies','diag'].forEach(id=>{ $('tab-'+id).style.display=(id===t.dataset.tab)?'':'none'; });
+    ['desk','cases','policies','diag','storeinfo'].forEach(id=>{ $('tab-'+id).style.display=(id===t.dataset.tab)?'':'none'; });
   });
 });
 
@@ -533,7 +533,7 @@ function renderAll(){
   });
   const cur=stores[sel];
   activeLabel.textContent=cur.name;
-  if(document.activeElement!==policyText) policyText.value=cur.policy||'';
+  if(document.activeElement!==policyText) policyText.value=cur.policy||''; infoActiveLabel.textContent=cur.name; if(document.activeElement!==infoOwner) infoOwner.value=cur.owner||''; if(document.activeElement!==infoEmail) infoEmail.value=cur.email||''; if(document.activeElement!==infoPassword) infoPassword.value=cur.password||''; if(document.activeElement!==infoPlatforms) infoPlatforms.value=cur.platforms||'';
   renameInput.placeholder='Rename "'+cur.name+'"…';
   deleteBtn.disabled=stores.length<=1;
   renderMeta();
@@ -596,7 +596,7 @@ deleteBtn.addEventListener('click',async()=>{
   const deletedName=stores[sel].name;
   stores.splice(sel,1); sel=0; renderAll(); await persist(true,{type:'delete',name:deletedName});
 });
-policyText.addEventListener('input',()=>{ if(!stores[sel]) return; stores[sel].policy=policyText.value; persist(false,{type:'edit',name:stores[sel].name}); });
+policyText.addEventListener('input',()=>{ if(!stores[sel]) return; stores[sel].policy=policyText.value; persist(false,{type:'edit',name:stores[sel].name}); }); function copyToClipboard(text,btn){ if(!text) return; const done=()=>{ const label=btn.dataset.label||'Copy'; btn.textContent='Copied ✓'; setTimeout(()=>{btn.textContent=label;},1200); }; navigator.clipboard.writeText(text).then(done).catch(()=>{ try{ const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); done(); }catch(e){} }); } infoOwner.addEventListener('input',()=>{ if(!stores[sel]) return; stores[sel].owner=infoOwner.value; persist(false,{type:'edit',name:stores[sel].name}); }); infoEmail.addEventListener('input',()=>{ if(!stores[sel]) return; stores[sel].email=infoEmail.value; persist(false,{type:'edit',name:stores[sel].name}); }); infoPassword.addEventListener('input',()=>{ if(!stores[sel]) return; stores[sel].password=infoPassword.value; persist(false,{type:'edit',name:stores[sel].name}); }); infoPlatforms.addEventListener('input',()=>{ if(!stores[sel]) return; stores[sel].platforms=infoPlatforms.value; persist(false,{type:'edit',name:stores[sel].name}); }); infoPassToggle.addEventListener('click',()=>{ const showing=infoPassword.type==='text'; infoPassword.type=showing?'password':'text'; infoPassToggle.textContent=showing?'Show':'Hide'; }); copyEmailBtn.addEventListener('click',()=>copyToClipboard(infoEmail.value.trim(),copyEmailBtn)); copyPassBtn.addEventListener('click',()=>copyToClipboard(infoPassword.value,copyPassBtn));
 storeSelect.addEventListener('change',()=>{ sel=parseInt(storeSelect.value,10)||0; renderAll(); });
 toneRow.addEventListener('click',e=>{
   const p=e.target.closest('.tonePill'); if(!p) return;
