@@ -661,7 +661,17 @@ function parseSummaryBlock(text){
   if(!out.emailSummary&&!out.category) throw new Error('summary block had no recognizable fields');
   return out;
 }
-function parseGenResponse(txt){
+function cleanFallbackReply(txt){
+    // Best-effort cleanup when parseGenResponse couldn't make sense of the
+    // response, so the draft box never shows raw ===REPLY===/===SUMMARY===
+    // markers or a dangling summary block to the agent.
+    let t=txt.trim().replace(REPLY_MARK_RE,'').trim();
+    const m=t.match(SUMMARY_MARK_RE);
+    if(m) t=t.slice(0,m.index).trim();
+    return t||txt.trim();
+}
+  
+  function parseGenResponse(txt){
   const t=txt.trim();
   const m=t.match(SUMMARY_MARK_RE);
   if(!m) throw new Error('missing summary marker');
@@ -689,6 +699,7 @@ Reply rules:
 - If something isn't covered, say so honestly and offer to escalate.
 - Tone: ${tone}. Address the customer by name if given. Keep it focused and concise.
 - Sign off as "${agent} — ${st.name} Support Team".
+- Always produce both sections in full, even when the customer email is very short, vague, or unclear — write the best reply you can (ask a clarifying question if needed) and still complete every SUMMARY field using your best judgment. Never omit the ===SUMMARY=== marker.
 
 Return your response in EXACTLY this two-section format — no markdown fences, no commentary before, between, or after the sections, and no other text anywhere:
 
@@ -742,7 +753,7 @@ Produce the response now, in the exact two-section format described.`;
       catch(e2){ parsed=null; }
     }
     if(parsed){ draftEl.value=parsed.reply; renderSummary(parsed.summary||null); }
-    else { draftEl.value=txt; renderSummary(null); setError('Draft generated, but the summary could not be parsed. The reply is still usable.'); }
+    else { draftEl.value=cleanFallbackReply(txt); renderSummary(null); setError('Draft generated, but the summary could not be parsed. The reply is still usable.'); }
     saveBtn.disabled=false;
   }catch(e){ setError("Couldn't generate. "+e.message); }
   finally{ genBtn.disabled=false; genBtn.textContent='Generate Draft'; }
