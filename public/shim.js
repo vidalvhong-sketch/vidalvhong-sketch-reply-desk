@@ -97,7 +97,7 @@
     // Policy editing is admin/owner. Agents get a read-only view of
     // store policies.
     if (!isAdminRole(me.role)) {
-      ['policyText', 'newStoreName', 'renameInput'].forEach(id => {
+      ['policyText', 'newStoreName', 'renameInput', 'infoOwner', 'infoEmail', 'infoPassword', 'infoPlatforms'].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.readOnly = true; el.disabled = true; }
       });
@@ -109,8 +109,7 @@
       if (n) {
         n.className = 'noticeBox warn';
         n.innerHTML = '<strong>Read-only</strong>Policies are maintained by admins. ' +
-                      'Contact one if something needs updating.';
-      }
+                      'Contact one if something needs updating.';    }    const sn = document.getElementById('storeInfoNotice');    if (sn) {      sn.className = 'noticeBox warn';      sn.innerHTML = '<strong>Read-only</strong>Store info is maintained by admins. ' +                     'Contact one if something needs updating.';    }
     }
     // "Reset to Defaults" (Diagnostics tab) rewrites shared policy data — owner-only.
     if (me.role !== 'owner') {
