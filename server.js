@@ -235,13 +235,28 @@ app.get('/api/activity', requireAdmin, (req, res) => {
 });
 
 /* ── Claude proxy ─────────────────────────────────────── */
+function sanitizeSystem(sys) {
+    // Supports both a plain string and Anthropic's content-block array form
+    // (so the client can attach cache_control for prompt caching).
+    if (Array.isArray(sys)) {
+          const blocks = sys.slice(0, 4).map(b => {
+                  if (!b || typeof b !== 'object') return null;
+                  const out = { type: 'text', text: String(b.text || '').slice(0, 60000) };
+                  if (b.cache_control && b.cache_control.type === 'ephemeral') out.cache_control = { type: 'ephemeral' };
+                  return out;
+          }).filter(Boolean);
+          return blocks.length ? blocks : '';
+    }
+    return String(sys || '').slice(0, 60000);
+}
+
 app.post('/api/generate', requireAuth, async (req, res) => {
   if (!API_KEY) return res.status(500).json({ error: 'Server has no API key configured' });
   try {
     const body = {
       model: MODEL,                                     // server decides the model
       max_tokens: Math.min(Number(req.body?.max_tokens) || 1000, MAX_TOKENS),
-      system: String(req.body?.system || '').slice(0, 60000),
+      system: sanitizeSystem(req.body?.system),
       messages: Array.isArray(req.body?.messages) ? req.body.messages.slice(0, 4) : []
     };
     const r = await fetch('https://api.anthropic.com/v1/messages', {
