@@ -162,7 +162,7 @@
               <span class="tonePill" data-tone="Apologetic and reassuring">Apologetic &amp; reassuring</span>
               <span class="tonePill" data-tone="Firm but polite (policy enforcement)">Firm but polite</span>
             </div>
-            <button class="btn accent" id="genBtn">Generate Draft</button>
+            <button class="btn accent" id="genBtn">Generate Draft</button><button class="btn secondary" id="clearBtn" type="button" style="margin-left:8px;">Clear</button>
           </div>
         </div>
       </div>
@@ -358,7 +358,7 @@ const agentEl=$('agentName'), syncBadge=$('syncBadge'), policyBadge=$('policyBad
       policyText=$('policyText'), activeLabel=$('activeLabel'), newStoreName=$('newStoreName'),
       addStoreBtn=$('addStoreBtn'), addHint=$('addHint'), renameInput=$('renameInput'),
       renameBtn=$('renameBtn'), deleteBtn=$('deleteBtn'), emailEl=$('emailText'),
-      nameEl=$('custName'), draftEl=$('draftText'), genBtn=$('genBtn'), saveBtn=$('saveBtn'),
+      nameEl=$('custName'), draftEl=$('draftText'), genBtn=$('genBtn'), saveBtn=$('saveBtn'), clearBtn=$('clearBtn'),
       copyBtn=$('copyBtn'), copiedTag=$('copiedTag'), errorBox=$('errorBox'), toneRow=$('toneRow'),
       csList=$('csList'), csEmpty=$('csEmpty'), caseCount=$('caseCount'), clearCasesBtn=$('clearCasesBtn'),
       diagLog=$('diagLog'), diagBadge=$('diagBadge'), runDiagBtn=$('runDiagBtn'),
@@ -727,7 +727,7 @@ Produce the response now, in the exact two-section format described.`;
   try{
     const r=await fetch("https://api.anthropic.com/v1/messages",{
       method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,system:sys,messages:[{role:"user",content:usr}]})
+      body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,system:[{type:"text",text:sys,cache_control:{type:"ephemeral"}}],messages:[{role:"user",content:usr}]})
     });
     if(!r.ok) throw new Error("API status "+r.status);
     const d=await r.json();
@@ -748,7 +748,13 @@ Produce the response now, in the exact two-section format described.`;
   finally{ genBtn.disabled=false; genBtn.textContent='Generate Draft'; }
 });
 
-copyBtn.addEventListener('click',async()=>{
+clearBtn.addEventListener('click',()=>{
+    nameEl.value=''; emailEl.value=''; draftEl.value='';
+    renderSummary(null); setError(null); saveBtn.disabled=true;
+    nameEl.focus();
+});
+  
+  copyBtn.addEventListener('click',async()=>{
   if(!draftEl.value.trim()) return;
   try{ await navigator.clipboard.writeText(draftEl.value); }
   catch(e){ draftEl.select(); try{document.execCommand('copy');}catch(e2){} }
