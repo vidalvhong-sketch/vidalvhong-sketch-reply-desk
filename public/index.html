@@ -14,7 +14,7 @@
     --serif:Georgia,'Times New Roman',serif;
     --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
   }
-  *{box-sizing:border-box;}
+  [data-theme="dark"]{--ink:#ece7da;--paper:#1c1e1b;--paper-2:#262924;--line:#3d4038;--accent:#e2794f;--accent-soft:#3a2620;--ok:#7fc98d;--ok-soft:#1e3322;--warn:#e8c15c;--warn-soft:#3a3115;--warn-line:#5c4d1f;--red:#e08573;--red-soft:#3a201c;--red-line:#5c332c;} [data-fontsize="large"] .wrap{zoom:1.3;} body{transition:background .15s,color .15s;} *{box-sizing:border-box;}
   body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);}
   .wrap{max-width:1280px;margin:0 auto;padding:22px 20px 60px;}
   header{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--ink);padding-bottom:13px;margin-bottom:16px;gap:14px;flex-wrap:wrap;}
@@ -126,7 +126,7 @@
       <span class="mark">Support Reply Desk</span>
       <span class="tag">Policy-aware draft assistant</span>
     </div>
-    <div class="header-right">
+    <div class="header-right"><button class="btn secondary sm" id="themeToggleBtn" type="button">Dark Mode</button><button class="btn secondary sm" id="fontSizeToggleBtn" type="button">Large Text</button>
       <div class="agent-wrap"><label>Agent</label><input type="text" id="agentName" placeholder="Your name…"></div>
       <span class="badge neutral" id="syncBadge"><span class="spinner dark"></span>Starting…</span>
     </div>
@@ -256,7 +256,7 @@
 </div>
 
 <!-- ══ STORE INFO ══ --><div id="tab-storeinfo" style="display:none;"><div class="noticeBox" id="storeInfoNotice"></div><div class="panel"><h2>Store Info — <span id="infoActiveLabel" style="font-weight:700;font-style:normal;text-transform:none;font-size:1.6em;letter-spacing:0.02em;">…</span></h2><div class="body"><div class="field"><label class="small">Client owner</label><input type="text" id="infoOwner" placeholder="Name of the client / account owner"></div><div class="field"><label class="small">Login email</label><div class="row" style="gap:6px;"><input type="text" id="infoEmail" placeholder="e.g. owner@store.com" style="flex:1;"><button class="btn secondary sm" id="copyEmailBtn" type="button" data-label="Copy">Copy</button></div></div><div class="field"><label class="small">Login password</label><div class="row" style="gap:6px;"><input type="password" id="infoPassword" placeholder="Password" style="flex:1;"><button class="btn secondary sm" id="infoPassToggle" type="button">Show</button><button class="btn secondary sm" id="copyPassBtn" type="button" data-label="Copy">Copy</button></div></div><div class="field"><label class="small">Other platforms that need access</label><textarea id="infoPlatforms" spellcheck="false" placeholder="e.g. Shopify admin — same login, ask owner for 2FA; ShipStation — separate login, owner has it; …" style="height:180px;"></textarea></div><div class="hint" style="margin-top:9px;">Auto-saves ~1s after you stop typing, then syncs to all agents. Admins/owner can edit — everyone can view.</div></div></div></div><script>
-'use strict';
+'use strict'; (function(){ var docEl=document.documentElement; function applyTheme(t){ if(t==='dark') docEl.setAttribute('data-theme','dark'); else docEl.removeAttribute('data-theme'); } function applyFontSize(f){ if(f==='large') docEl.setAttribute('data-fontsize','large'); else docEl.removeAttribute('data-fontsize'); } applyTheme(localStorage.getItem('rd-theme')); applyFontSize(localStorage.getItem('rd-fontsize')); document.addEventListener('DOMContentLoaded', function(){ var tb=document.getElementById('themeToggleBtn'); var fb=document.getElementById('fontSizeToggleBtn'); function syncLabels(){ if(tb) tb.textContent = docEl.getAttribute('data-theme')==='dark' ? 'Light Mode' : 'Dark Mode'; if(fb) fb.textContent = docEl.getAttribute('data-fontsize')==='large' ? 'Normal Text' : 'Large Text'; } syncLabels(); if(tb) tb.addEventListener('click', function(){ var next = docEl.getAttribute('data-theme')==='dark' ? '' : 'dark'; applyTheme(next); localStorage.setItem('rd-theme', next); syncLabels(); }); if(fb) fb.addEventListener('click', function(){ var next = docEl.getAttribute('data-fontsize')==='large' ? '' : 'large'; applyFontSize(next); localStorage.setItem('rd-fontsize', next); syncLabels(); }); }); })();
 
 const DEFAULTS=[
 {name:"Riverstone Goods",policy:`STORE POLICY — Riverstone Goods
