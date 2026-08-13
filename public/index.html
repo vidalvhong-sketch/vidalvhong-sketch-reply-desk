@@ -328,10 +328,10 @@ const DB={
     try{
       if(typeof window.storage==='undefined'||!window.storage) throw new Error('window.storage is not available');
       const k='__probe_'+Date.now();
-      await window.storage.set(k,'ok',true);
-      const r=await window.storage.get(k,true);
+      await window.storage.set(k,'ok',false);
+      const r=await window.storage.get(k,false);
       if(!r||r.value!=='ok') throw new Error('probe read-back mismatch');
-      try{ await window.storage.delete(k,true); }catch(e){}
+      try{ await window.storage.delete(k,false); }catch(e){}
       this.ok=true; this.reason='shared storage OK';
     }catch(e){ this.ok=false; this.reason=(e&&e.message)?e.message:String(e); }
     return this.ok;
