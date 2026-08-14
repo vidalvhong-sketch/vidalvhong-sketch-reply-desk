@@ -71,7 +71,7 @@
   .store-item:hover{border-color:#b9b09a;}
   .store-item.sel{border-color:var(--accent);background:var(--accent-soft);font-weight:600;}
   .addRow{display:flex;gap:6px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line);}
-  .addRow input{flex:1;}
+  .addRow input{flex:1;} .tpl-card{background:var(--paper);border:1px solid var(--line);border-radius:2px;padding:11px 13px;margin-bottom:9px;} .tpl-title{font-weight:600;font-size:13.5px;margin-bottom:5px;} .tpl-body{white-space:pre-wrap;font-size:13px;line-height:1.5;margin-bottom:9px;}
 
   /* ── SUMMARY ── */
   .sum-empty{color:#8a8270;font-family:var(--mono);font-size:11.5px;text-align:center;padding:26px 10px;line-height:1.7;}
@@ -135,7 +135,7 @@
   <div class="tabs">
     <div class="tab active" data-tab="desk">Reply Desk</div>
     <div class="tab" data-tab="cases">My Cases <span class="count" id="caseCount">0</span></div>
-    <div class="tab" data-tab="policies">Store Policies</div>
+    <div class="tab" data-tab="policies">Store Policies</div><div class="tab" data-tab="templates">Templates</div>
     <div class="tab" data-tab="diag">Diagnostics</div><div class="tab" data-tab="storeinfo">Store Info</div>
   </div>
 
@@ -255,7 +255,7 @@
   </div>
 </div>
 
-<!-- ══ STORE INFO ══ --><div id="tab-storeinfo" style="display:none;"><div class="noticeBox" id="storeInfoNotice"></div><div class="panel"><h2>Store Info — <span id="infoActiveLabel" style="font-weight:700;font-style:normal;text-transform:none;font-size:1.6em;letter-spacing:0.02em;">…</span></h2><div class="body"><div class="field"><label class="small">Client owner</label><input type="text" id="infoOwner" placeholder="Name of the client / account owner"></div><div class="field"><label class="small">Login email</label><div class="row" style="gap:6px;"><input type="text" id="infoEmail" placeholder="e.g. owner@store.com" style="flex:1;"><button class="btn secondary sm" id="copyEmailBtn" type="button" data-label="Copy">Copy</button></div></div><div class="field"><label class="small">Login password</label><div class="row" style="gap:6px;"><input type="password" id="infoPassword" placeholder="Password" style="flex:1;"><button class="btn secondary sm" id="infoPassToggle" type="button">Show</button><button class="btn secondary sm" id="copyPassBtn" type="button" data-label="Copy">Copy</button></div></div><div class="field"><label class="small">Other platforms that need access</label><textarea id="infoPlatforms" spellcheck="false" placeholder="e.g. Shopify admin — same login, ask owner for 2FA; ShipStation — separate login, owner has it; …" style="height:180px;"></textarea></div><div class="hint" style="margin-top:9px;">Auto-saves ~1s after you stop typing, then syncs to all agents. Admins/owner can edit — everyone can view.</div></div></div></div><script>
+<!-- ══ STORE INFO ══ --><div id="tab-storeinfo" style="display:none;"><div class="noticeBox" id="storeInfoNotice"></div><div class="panel"><h2>Store Info — <span id="infoActiveLabel" style="font-weight:700;font-style:normal;text-transform:none;font-size:1.6em;letter-spacing:0.02em;">…</span></h2><div class="body"><div class="field"><label class="small">Client owner</label><input type="text" id="infoOwner" placeholder="Name of the client / account owner"></div><div class="field"><label class="small">Login email</label><div class="row" style="gap:6px;"><input type="text" id="infoEmail" placeholder="e.g. owner@store.com" style="flex:1;"><button class="btn secondary sm" id="copyEmailBtn" type="button" data-label="Copy">Copy</button></div></div><div class="field"><label class="small">Login password</label><div class="row" style="gap:6px;"><input type="password" id="infoPassword" placeholder="Password" style="flex:1;"><button class="btn secondary sm" id="infoPassToggle" type="button">Show</button><button class="btn secondary sm" id="copyPassBtn" type="button" data-label="Copy">Copy</button></div></div><div class="field"><label class="small">Other platforms that need access</label><textarea id="infoPlatforms" spellcheck="false" placeholder="e.g. Shopify admin — same login, ask owner for 2FA; ShipStation — separate login, owner has it; …" style="height:180px;"></textarea></div><div class="hint" style="margin-top:9px;">Auto-saves ~1s after you stop typing, then syncs to all agents. Admins/owner can edit — everyone can view.</div></div></div></div><!-- ══ TEMPLATES ══ --><div id="tab-templates" style="display:none;"><div class="panel"><h2>Reply Templates</h2><div class="body"><div class="grid policies"><div><div class="hint" style="margin-bottom:9px;">Pick an issue type, then copy the reply or drop it straight into Reply Desk.</div><div class="store-list" id="tplCatList"></div></div><div><h2 id="tplCatLabel" style="font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:1.4px;margin:0 0 11px;color:#5a5346;">…</h2><div id="tplList"></div><button class="btn secondary sm" id="addTplBtn" type="button" style="display:none;margin-top:9px;">+ Add Template</button><div class="field" id="tplForm" style="display:none;margin-top:11px;padding-top:11px;border-top:1px dashed var(--line);"><label class="small">Category</label><input type="text" id="tplCategoryInput" placeholder="e.g. Cancel, Refund, Shipping…"><label class="small" style="margin-top:9px;">Title</label><input type="text" id="tplTitleInput" placeholder="e.g. Cancel — within window"><label class="small" style="margin-top:9px;">Reply body</label><textarea id="tplBodyInput" spellcheck="false" placeholder="Hi {{name}}, …" style="height:170px;"></textarea><div class="row" style="margin-top:9px;"><button class="btn accent sm" id="saveTplBtn" type="button">Save</button><button class="btn secondary sm" id="cancelTplBtn" type="button">Cancel</button><button class="btn danger sm" id="deleteTplBtn" type="button" style="display:none;">Delete</button></div></div></div></div></div></div></div><script>
 'use strict'; (function(){ var docEl=document.documentElement; function applyTheme(t){ if(t==='dark') docEl.setAttribute('data-theme','dark'); else docEl.removeAttribute('data-theme'); } function applyFontSize(f){ if(f==='large') docEl.setAttribute('data-fontsize','large'); else docEl.removeAttribute('data-fontsize'); } applyTheme(localStorage.getItem('rd-theme')); applyFontSize(localStorage.getItem('rd-fontsize')); document.addEventListener('DOMContentLoaded', function(){ var tb=document.getElementById('themeToggleBtn'); var fb=document.getElementById('fontSizeToggleBtn'); function syncLabels(){ if(tb) tb.textContent = docEl.getAttribute('data-theme')==='dark' ? 'Light Mode' : 'Dark Mode'; if(fb) fb.textContent = docEl.getAttribute('data-fontsize')==='large' ? 'Normal Text' : 'Large Text'; } syncLabels(); if(tb) tb.addEventListener('click', function(){ var next = docEl.getAttribute('data-theme')==='dark' ? '' : 'dark'; applyTheme(next); localStorage.setItem('rd-theme', next); syncLabels(); }); if(fb) fb.addEventListener('click', function(){ var next = docEl.getAttribute('data-fontsize')==='large' ? '' : 'large'; applyFontSize(next); localStorage.setItem('rd-fontsize', next); syncLabels(); }); }); })();
 
 const DEFAULTS=[
@@ -374,7 +374,7 @@ document.querySelectorAll('.tab').forEach(t=>{
   t.addEventListener('click',()=>{
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
     t.classList.add('active');
-    ['desk','cases','policies','diag','storeinfo'].forEach(id=>{ $('tab-'+id).style.display=(id===t.dataset.tab)?'':'none'; });
+    ['desk','cases','policies','templates','diag','storeinfo'].forEach(id=>{ $('tab-'+id).style.display=(id===t.dataset.tab)?'':'none'; });
   });
 });
 
@@ -597,7 +597,43 @@ deleteBtn.addEventListener('click',async()=>{
   stores.splice(sel,1); sel=0; renderAll(); await persist(true,{type:'delete',name:deletedName});
 });
 policyText.addEventListener('input',()=>{ if(!stores[sel]) return; stores[sel].policy=policyText.value; persist(false,{type:'edit',name:stores[sel].name}); }); function copyToClipboard(text,btn){ if(!text) return; const done=()=>{ const label=btn.dataset.label||'Copy'; btn.textContent='Copied ✓'; setTimeout(()=>{btn.textContent=label;},1200); }; navigator.clipboard.writeText(text).then(done).catch(()=>{ try{ const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); done(); }catch(e){} }); } infoOwner.addEventListener('input',()=>{ if(!stores[sel]) return; stores[sel].owner=infoOwner.value; persist(false,{type:'edit',name:stores[sel].name}); }); infoEmail.addEventListener('input',()=>{ if(!stores[sel]) return; stores[sel].email=infoEmail.value; persist(false,{type:'edit',name:stores[sel].name}); }); infoPassword.addEventListener('input',()=>{ if(!stores[sel]) return; stores[sel].password=infoPassword.value; persist(false,{type:'edit',name:stores[sel].name}); }); infoPlatforms.addEventListener('input',()=>{ if(!stores[sel]) return; stores[sel].platforms=infoPlatforms.value; persist(false,{type:'edit',name:stores[sel].name}); }); infoPassToggle.addEventListener('click',()=>{ const showing=infoPassword.type==='text'; infoPassword.type=showing?'password':'text'; infoPassToggle.textContent=showing?'Show':'Hide'; }); copyEmailBtn.addEventListener('click',()=>copyToClipboard(infoEmail.value.trim(),copyEmailBtn)); copyPassBtn.addEventListener('click',()=>copyToClipboard(infoPassword.value,copyPassBtn));
-storeSelect.addEventListener('change',()=>{ sel=parseInt(storeSelect.value,10)||0; renderAll(); });
+storeSelect.addEventListener('change',()=>{ sel=parseInt(storeSelect.value,10)||0; renderAll(); });const tplCatList=$('tplCatList'), tplCatLabelEl=$('tplCatLabel'), tplListEl=$('tplList'), addTplBtn=$('addTplBtn'), tplForm=$('tplForm'), tplCategoryInput=$('tplCategoryInput'), tplTitleInput=$('tplTitleInput'), tplBodyInput=$('tplBodyInput'), saveTplBtn=$('saveTplBtn'), cancelTplBtn=$('cancelTplBtn'), deleteTplBtn=$('deleteTplBtn');let templates=[], tplCategory=null, tplEditingId=null;const TEMPLATE_DEFAULTS=[ {id:'t1',category:'Cancel',title:'Cancel — within window',body:`Hi {{name}},
+
+Thanks for reaching out! I'd be happy to help with cancelling your order.
+
+Just a heads-up on our policy: cancellations can only be made within 1 hour of placing the order. To check if your order still qualifies, could you please send me your order number and the approximate time you placed it?
+
+Once I have that, I can confirm whether we're able to cancel it right away or let you know the next best option if it's outside that window.
+
+Looking forward to your reply!`}, {id:'t2',category:'Refund',title:'Refund — general request',body:`Hi {{name}},
+
+Thanks for reaching out about a refund for your order — sorry it didn't work out!
+
+Could you send me your order number and the reason for the refund? Once I have that I'll check it against our return window and get things moving as quickly as possible.
+
+Thanks for your patience!`}, {id:'t3',category:'Shipping delay',title:'Shipping delay — checking status',body:`Hi {{name}},
+
+Thanks for reaching out, and sorry for the delay! Let me look into this for you.
+
+Could you send me your order number? I'll check the latest tracking status and give you an updated delivery estimate.
+
+Appreciate your patience!`}, {id:'t4',category:'Damaged/Defective',title:'Damaged or defective item',body:`Hi {{name}},
+
+I'm so sorry to hear your item arrived damaged or defective — that's not the experience we want you to have!
+
+Could you send a couple of photos of the item and packaging, along with your order number? I'll get a replacement or refund sent your way right away.`}, {id:'t5',category:'Return',title:'Return request',body:`Hi {{name}},
+
+Thanks for reaching out! I'd be glad to help you get this returned.
+
+Could you confirm your order number and the reason for the return? I'll send over return instructions and a shipping label if it qualifies under our return policy.`}, {id:'t6',category:'Wrong item received',title:'Wrong item sent',body:`Hi {{name}},
+
+I'm really sorry about that — you should have received exactly what you ordered!
+
+Could you send your order number and a photo of what arrived? I'll get the correct item sent out right away and take care of getting the wrong one back to us.`}, {id:'t7',category:'Order status',title:'Where is my order',body:`Hi {{name}},
+
+Happy to check on that for you! Could you send over your order number?
+
+Once I have it, I'll pull up the latest tracking info and let you know exactly when to expect it.`}];function tplIsAdmin(){ return window.__tplAdmin===true; }function tplCategories(){ const seen=[]; templates.forEach(t=>{ if(!seen.includes(t.category)) seen.push(t.category); }); return seen; }function renderTplCats(){ const cats=tplCategories(); if(!tplCategory||!cats.includes(tplCategory)) tplCategory=cats[0]||null; tplCatList.innerHTML=''; cats.forEach(c=>{ const d=document.createElement('div'); d.className='store-item'+(c===tplCategory?' sel':''); d.textContent=c+' ('+templates.filter(t=>t.category===c).length+')'; d.addEventListener('click',()=>{ tplCategory=c; tplFormHide(); renderTplCats(); renderTplList(); }); tplCatList.appendChild(d); }); }function tplFormHide(){ tplForm.style.display='none'; tplEditingId=null; }function openTplForm(t){ tplEditingId=t?t.id:null; tplCategoryInput.value=t?t.category:(tplCategory||''); tplTitleInput.value=t?t.title:''; tplBodyInput.value=t?t.body:''; deleteTplBtn.style.display=t?'':'none'; tplForm.style.display=''; tplTitleInput.focus(); }function renderTplList(){ tplCatLabelEl.textContent=tplCategory||'No templates yet'; tplListEl.innerHTML=''; addTplBtn.style.display=tplIsAdmin()?'':'none'; const items=templates.filter(t=>t.category===tplCategory); if(items.length===0){ tplListEl.innerHTML='<div class="hint">No templates in this category yet.</div>'; } items.forEach(t=>{ const card=document.createElement('div'); card.className='tpl-card'; const title=document.createElement('div'); title.className='tpl-title'; title.textContent=t.title; const body=document.createElement('div'); body.className='tpl-body'; body.textContent=t.body; const row=document.createElement('div'); row.className='row'; const copyB=document.createElement('button'); copyB.className='btn secondary sm'; copyB.type='button'; copyB.dataset.label='Copy'; copyB.textContent='Copy'; copyB.addEventListener('click',()=>copyToClipboard(t.body,copyB)); const useB=document.createElement('button'); useB.className='btn accent sm'; useB.type='button'; useB.textContent='Use in Reply'; useB.addEventListener('click',()=>{ draftEl.value=t.body; const dt=document.querySelector('.tab[data-tab="desk"]'); if(dt) dt.click(); }); row.appendChild(copyB); row.appendChild(useB); if(tplIsAdmin()){ const editB=document.createElement('button'); editB.className='btn secondary sm'; editB.type='button'; editB.textContent='Edit'; editB.addEventListener('click',()=>openTplForm(t)); row.appendChild(editB); } card.appendChild(title); card.appendChild(body); card.appendChild(row); tplListEl.appendChild(card); }); }async function persistTemplates(){ try{ await DB.set('templates',JSON.stringify(templates),true); }catch(e){} }addTplBtn.addEventListener('click',()=>openTplForm(null));cancelTplBtn.addEventListener('click',tplFormHide);saveTplBtn.addEventListener('click',async()=>{ const cat=(tplCategoryInput.value||'').trim(), title=(tplTitleInput.value||'').trim(), body=tplBodyInput.value||''; if(!cat||!title||!body.trim()) return; const me=agentEl.value.trim()||'(unknown)', now=new Date().toISOString(); if(tplEditingId){ const t=templates.find(x=>x.id===tplEditingId); if(t){ t.category=cat; t.title=title; t.body=body; t.editedBy=me; t.editedAt=now; } } else { templates.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),category:cat,title,body,addedBy:me,addedAt:now,editedBy:me,editedAt:now}); } tplCategory=cat; tplFormHide(); renderTplCats(); renderTplList(); await persistTemplates(); });deleteTplBtn.addEventListener('click',async()=>{ if(!tplEditingId) return; templates=templates.filter(x=>x.id!==tplEditingId); tplFormHide(); renderTplCats(); renderTplList(); await persistTemplates(); });
 toneRow.addEventListener('click',e=>{
   const p=e.target.closest('.tonePill'); if(!p) return;
   document.querySelectorAll('.tonePill').forEach(x=>x.classList.remove('active'));
@@ -940,7 +976,7 @@ resetBtn.addEventListener('click',async()=>{
   }
   const cs=await DB.get('cases',false);
   if(cs){ try{ cases=JSON.parse(cs); }catch(e){ cases=[]; } }
-  const an=await DB.get('agentName',false); if(an) agentEl.value=an;
+  const an=await DB.get('agentName',false); if(an) agentEl.value=an; const meT=window.ME_PROMISE?await window.ME_PROMISE.catch(()=>null):null; window.__tplAdmin=!!(meT&&(meT.role==='owner'||meT.role==='admin')); const traw=await DB.get('templates',true); if(traw){ try{ templates=JSON.parse(traw); }catch(e){ templates=JSON.parse(JSON.stringify(TEMPLATE_DEFAULTS)); } } else { templates=JSON.parse(JSON.stringify(TEMPLATE_DEFAULTS)); if(DB.ok){ try{ await DB.set('templates',JSON.stringify(templates),true); }catch(e){} } } renderTplCats(); renderTplList();
   renderAll(); renderCases(); renderSummary(null);
 })().catch(e=>{
   badge(syncBadge,'error','⚠ Init error');
