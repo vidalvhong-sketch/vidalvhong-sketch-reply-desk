@@ -48,12 +48,16 @@
     }
   };
 
-  /* fire-and-forget activity log entry — used for the agent history dashboard */
-  window.logActivity = function (action, detail) {
+  /* fire-and-forget activity log entry — used for the agent history dashboard
+     and, via the optional store param, the store/agent dashboards */
+  window.logActivity = function (action, detail, store) {
     _fetch('/api/activity', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ action, detail: String(detail == null ? '' : detail).slice(0, 300) }),
+      body: JSON.stringify({
+        action, detail: String(detail == null ? '' : detail).slice(0, 300),
+        store: store == null ? '' : String(store).slice(0, 120)
+      }),
       credentials: 'same-origin'
     }).catch(() => {});
   };
@@ -97,7 +101,7 @@
     // Policy editing is admin/owner. Agents get a read-only view of
     // store policies.
     if (!isAdminRole(me.role)) {
-      ['policyText', 'newStoreName', 'renameInput', 'infoOwner', 'infoEmail', 'infoPassword', 'infoPlatforms'].forEach(id => {
+      ['policyText', 'newStoreName', 'renameInput'].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.readOnly = true; el.disabled = true; }
       });
@@ -109,7 +113,8 @@
       if (n) {
         n.className = 'noticeBox warn';
         n.innerHTML = '<strong>Read-only</strong>Policies are maintained by admins. ' +
-                      'Contact one if something needs updating.';    }    const sn = document.getElementById('storeInfoNotice');    if (sn) {      sn.className = 'noticeBox warn';      sn.innerHTML = '<strong>Read-only</strong>Store info is maintained by admins. ' +                     'Contact one if something needs updating.';    }
+                      'Contact one if something needs updating.';
+      }
     }
     // "Reset to Defaults" (Diagnostics tab) rewrites shared policy data — owner-only.
     if (me.role !== 'owner') {
