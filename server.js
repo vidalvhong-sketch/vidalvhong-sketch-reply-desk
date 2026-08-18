@@ -56,6 +56,10 @@ CREATE TABLE IF NOT EXISTS activity_log(
 );
 `);
 
+// activity_log.store — added after the table above already existed in some
+// deployments, so add it defensively rather than in the CREATE TABLE.
+try { db.exec('ALTER TABLE activity_log ADD COLUMN store TEXT'); } catch { /* already exists */ }
+
 // Owner account — this becomes the app's OWNER (there is exactly one).
 // The owner role sits above admin: nobody, including other admins, can
 // modify or disable the owner's own login (see requireAdmin + the
@@ -86,12 +90,13 @@ CREATE TABLE IF NOT EXISTS activity_log(
   }
 }
 
-function logActivity({ username, name, role, action, detail }) {
+function logActivity({ username, name, role, action, detail, store }) {
   try {
-    db.prepare(`INSERT INTO activity_log(username,name,role,action,detail,created_at)
-                VALUES(?,?,?,?,?,?)`)
+    db.prepare(`INSERT INTO activity_log(username,name,role,action,detail,store,created_at)
+                VALUES(?,?,?,?,?,?,?)`)
       .run(username || null, name || null, role || null, action,
-           detail ? String(detail).slice(0, 300) : null, new Date().toISOString());
+           detail ? String(detail).slice(0, 300) : null,
+           store ? String(store).slice(0, 120) : null, new Date().toISOString());
   } catch { /* never let logging break the request */ }
 }
 
@@ -216,13 +221,13 @@ const CLIENT_ACTIONS = new Set([
 ]);
 
 app.post('/api/activity', requireAuth, (req, res) => {
-  const { action = '', detail = '' } = req.body || {};
+  const { action = '', detail = '', store = '' } = req.body || {};
   if (!CLIENT_ACTIONS.has(action)) return res.status(400).json({ error: 'Unknown action' });
   if (action.startsWith('policy_') && !isAdminRole(req.session.role))
     return res.status(403).json({ error: 'Admin only' });
   logActivity({
     username: req.session.username, name: req.session.name, role: req.session.role,
-    action, detail
+    action, detail, store
   });
   res.json({ ok: true });
 });
@@ -234,31 +239,54 @@ app.get('/api/activity', requireAdmin, (req, res) => {
   ).all(limit));
 });
 
-/* ── Claude proxy ─────────────────────────────────────── */
-function sanitizeSystem(sys) {
-    // Supports both a plain string and Anthropic's content-block array form
-    // (so the client can attach cache_control for prompt caching).
-    if (Array.isArray(sys)) {
-          const blocks = sys.slice(0, 4).map(b => {
-                  if (!b || typeof b !== 'object') return null;
-                  const out = { type: 'text', text: String(b.text || '').slice(0, 60000) };
-                  if (b.cache_control && b.cache_control.type === 'ephemeral') out.cache_control = { type: 'ephemeral' };
-                  return out;
-          }).filter(Boolean);
-          return blocks.length ? blocks : '';
+/* ── dashboard ────────────────────────────────────────────
+   Two views, deliberately split by audience:
+   - store-issues: what kinds of problems each store is seeing, aggregated
+     from every agent's saved cases but stripped of who handled it, the
+     customer's name, and any email/draft content. Safe for every role,
+     including agents, since it never identifies a person.
+   - agent-copies: who copied how many drafted replies, per store and per
+     day — a people-monitoring view, so it's admin/owner only. */
+app.get('/api/dashboard/store-issues', requireAuth, (_req, res) => {
+  const rows = db.prepare("SELECT value FROM kv WHERE key='cases' AND scope LIKE 'u%'").all();
+  const out = [];
+  for (const row of rows) {
+    let arr = [];
+    try { arr = JSON.parse(row.value) || []; } catch { arr = []; }
+    for (const c of arr) {
+      if (!c || typeof c !== 'object') continue;
+      out.push({
+        store: c.store || 'Unknown',
+        category: (c.summary && c.summary.category) || 'Uncategorized',
+        date: (c.createdAt || '').slice(0, 10) || null
+      });
     }
-    return String(sys || '').slice(0, 60000);
-}
+  }
+  res.json(out);
+});
 
+app.get('/api/dashboard/agent-copies', requireAdmin, (_req, res) => {
+  const rows = db.prepare(
+    `SELECT username, name, store, created_at FROM activity_log
+     WHERE action='draft_copied' ORDER BY id DESC LIMIT 10000`
+  ).all();
+  res.json(rows.map(r => ({
+    username: r.username, name: r.name || r.username || '—',
+    store: r.store || 'Unknown', date: (r.created_at || '').slice(0, 10)
+  })));
+});
+
+/* ── Claude proxy ─────────────────────────────────────── */
 app.post('/api/generate', requireAuth, async (req, res) => {
   if (!API_KEY) return res.status(500).json({ error: 'Server has no API key configured' });
   try {
     const body = {
       model: MODEL,                                     // server decides the model
       max_tokens: Math.min(Number(req.body?.max_tokens) || 1000, MAX_TOKENS),
-      system: sanitizeSystem(req.body?.system),
+      system: String(req.body?.system || '').slice(0, 60000),
       messages: Array.isArray(req.body?.messages) ? req.body.messages.slice(0, 4) : []
     };
+    const store = String(req.body?.store || '').slice(0, 120);
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -276,7 +304,7 @@ app.post('/api/generate', requireAuth, async (req, res) => {
              data.usage.output_tokens || 0, new Date().toISOString());
       logActivity({
         username: req.session.username, name: req.session.name, role: req.session.role,
-        action: 'draft_generated'
+        action: 'draft_generated', store
       });
     }
     res.status(r.status).json(data);
