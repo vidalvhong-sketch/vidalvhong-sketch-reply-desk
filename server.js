@@ -414,10 +414,16 @@ app.get('/api/usage', requireAdmin, (_req, res) => {
 
 /* ── pages ────────────────────────────────────────────── */
 const page = f => path.join(__dirname, 'public', f);
-app.get('/login', (_req, res) => res.sendFile(page('login.html')));
-app.get('/', (req, res) => req.session.uid ? res.sendFile(page('index.html')) : res.redirect('/login'));
-app.get('/admin', (req, res) =>
-  isAdminRole(req.session.role) ? res.sendFile(page('admin.html')) : res.redirect('/'));
+const noCache = res => res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+app.get('/login', (_req, res) => { noCache(res); res.sendFile(page('login.html')); });
+app.get('/', (req, res) => {
+  noCache(res);
+  req.session.uid ? res.sendFile(page('index.html')) : res.redirect('/login');
+});
+app.get('/admin', (req, res) => {
+  noCache(res);
+  isAdminRole(req.session.role) ? res.sendFile(page('admin.html')) : res.redirect('/');
+});
 app.use(express.static(path.join(__dirname, 'public'), {
   index: false,
   setHeaders: res => res.setHeader('Cache-Control', 'no-cache, must-revalidate')
