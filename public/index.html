@@ -395,11 +395,16 @@ const DB={
     try{
       if(typeof window.storage==='undefined'||!window.storage) throw new Error('window.storage is not available');
       const k='__probe_'+Date.now();
-      await window.storage.set(k,'ok',true);
-      const r=await window.storage.get(k,true);
+      // Use a personal (non-shared) key for this connectivity check — agents
+      // are intentionally blocked from writing shared keys (store policies
+      // are admin/owner-only to edit), so probing with shared:true would
+      // 403 for every agent and permanently trip "Local only" even though
+      // the server connection is perfectly fine.
+      await window.storage.set(k,'ok',false);
+      const r=await window.storage.get(k,false);
       if(!r||r.value!=='ok') throw new Error('probe read-back mismatch');
-      try{ await window.storage.delete(k,true); }catch(e){}
-      this.ok=true; this.reason='shared storage OK';
+      try{ await window.storage.delete(k,false); }catch(e){}
+      this.ok=true; this.reason='storage OK';
     }catch(e){ this.ok=false; this.reason=(e&&e.message)?e.message:String(e); }
     return this.ok;
   },
