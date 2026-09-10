@@ -29,6 +29,7 @@ const ACTION_LABEL = {
   policy_added: 'Added a policy',
   policy_edited: 'Edited a policy',
   policy_deleted: 'Deleted a policy',
+  info_edited: 'Edited store info',
   case_added: 'Saved a case',
   case_deleted: 'Deleted a case',
   account_reset: 'Reset an account to default',
