@@ -217,13 +217,14 @@ app.delete('/api/kv/:key', requireAuth, (req, res) => {
 const CLIENT_ACTIONS = new Set([
   'draft_copied',
   'policy_added', 'policy_edited', 'policy_deleted',
+  'info_edited',
   'case_added', 'case_deleted'
 ]);
 
 app.post('/api/activity', requireAuth, (req, res) => {
   const { action = '', detail = '', store = '' } = req.body || {};
   if (!CLIENT_ACTIONS.has(action)) return res.status(400).json({ error: 'Unknown action' });
-  if (action.startsWith('policy_') && !isAdminRole(req.session.role))
+  if ((action.startsWith('policy_') || action.startsWith('info_')) && !isAdminRole(req.session.role))
     return res.status(403).json({ error: 'Admin only' });
   logActivity({
     username: req.session.username, name: req.session.name, role: req.session.role,
