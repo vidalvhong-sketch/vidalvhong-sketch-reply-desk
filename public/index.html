@@ -15,6 +15,8 @@
     --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
   }
   *{box-sizing:border-box;}
+  html.text-large{zoom:1.25;}
+  html.text-xlarge{zoom:1.55;}
   body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);}
   .wrap{max-width:1280px;margin:0 auto;padding:22px 20px 60px;}
   header{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--ink);padding-bottom:13px;margin-bottom:16px;gap:14px;flex-wrap:wrap;}
@@ -22,6 +24,10 @@
   .brand .mark{font-family:var(--serif);font-weight:700;font-size:23px;letter-spacing:-0.5px;}
   .brand .tag{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#6b6356;border-left:1px solid var(--line);padding-left:12px;}
   .header-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .textSizeWrap{display:flex;border:1px solid var(--line);border-radius:20px;overflow:hidden;}
+  .textSizeBtn{font-family:var(--mono);font-size:11px;padding:6px 11px;cursor:pointer;color:#6b6356;background:var(--paper);user-select:none;}
+  .textSizeBtn+.textSizeBtn{border-left:1px solid var(--line);}
+  .textSizeBtn.active{background:var(--accent-soft);color:var(--accent);}
   .agent-wrap{display:flex;align-items:center;gap:8px;}
   .agent-wrap label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b6356;}
   .agent-wrap input{border:1px solid var(--line);background:var(--paper);padding:6px 10px;font-size:13px;border-radius:2px;color:var(--ink);width:150px;}
@@ -141,6 +147,11 @@
       <span class="tag">Policy-aware draft assistant</span>
     </div>
     <div class="header-right">
+      <div class="textSizeWrap" id="textSizeWrap" title="Text size">
+        <span class="textSizeBtn" data-size="normal">A</span>
+        <span class="textSizeBtn" data-size="large">A+</span>
+        <span class="textSizeBtn" data-size="xlarge">A++</span>
+      </div>
       <div class="agent-wrap"><label>Agent</label><input type="text" id="agentName" placeholder="Your name…"></div>
       <span class="badge neutral" id="syncBadge"><span class="spinner dark"></span>Starting…</span>
     </div>
@@ -450,6 +461,24 @@ const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
 const ts=()=>new Date().toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
 function badge(el,cls,txt){ el.className='badge '+cls; el.innerHTML=(cls==='saving'?'<span class="spinner dark"></span>':'')+txt; }
 function flash(el){ el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),1400); }
+
+/* ═══ TEXT SIZE (per-agent, stays on this browser) ═══ */
+(function(){
+  const CLASS_OF={normal:'',large:'text-large',xlarge:'text-xlarge'};
+  function apply(size){
+    document.documentElement.classList.remove('text-large','text-xlarge');
+    if(CLASS_OF[size]) document.documentElement.classList.add(CLASS_OF[size]);
+    document.querySelectorAll('#textSizeWrap .textSizeBtn').forEach(b=>b.classList.toggle('active',b.dataset.size===size));
+  }
+  let saved='normal';
+  try{ saved=localStorage.getItem('textSize')||'normal'; }catch(e){}
+  apply(saved);
+  document.getElementById('textSizeWrap').addEventListener('click',e=>{
+    const b=e.target.closest('.textSizeBtn'); if(!b) return;
+    apply(b.dataset.size);
+    try{ localStorage.setItem('textSize',b.dataset.size); }catch(e){}
+  });
+})();
 
 document.querySelectorAll('.tab').forEach(t=>{
   t.addEventListener('click',()=>{
