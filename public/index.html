@@ -238,15 +238,21 @@
         </div>
       </div>
       <div class="panel">
-        <h2>Policy — <span id="activeLabel" style="font-weight:400;font-style:italic;text-transform:none;letter-spacing:0;">…</span></h2>
+        <h2 id="detailsHeader">Policy — <span id="activeLabel" style="font-weight:400;font-style:italic;text-transform:none;letter-spacing:0;">…</span></h2>
         <div class="body">
           <div class="row" style="margin-bottom:10px;">
             <input type="text" id="renameInput" placeholder="Rename this store…" maxlength="60" style="flex:1;min-width:160px;">
             <button class="btn secondary sm" id="renameBtn">Rename</button>
             <button class="btn danger sm" id="deleteBtn">Delete</button>
           </div>
+          <div class="toneRow" id="detailSubtabs" style="margin-bottom:10px;">
+            <span class="tonePill active" data-view="policy">Policy</span>
+            <span class="tonePill" data-view="info">Store Info</span>
+          </div>
           <div class="hint" id="policyMeta" style="margin-bottom:9px;"></div>
           <textarea id="policyText" spellcheck="false" placeholder="Type this store's policy here…"></textarea>
+          <textarea id="infoText" spellcheck="false" placeholder="Store owner name & contact, store website, store email + password, CRM/subscription platform + login, and anything else an agent needs to pick up this store…" style="display:none;"></textarea>
+          <div class="noticeBox warn" id="infoNotice" style="display:none;"><strong>Shared with every agent on this app</strong>This holds logins so any agent can switch stores without asking around. Only admins can edit it. Treat it like the store's keys — don't copy it into chats, spreadsheets, or anywhere outside this app.</div>
           <div class="hint" style="margin-top:9px;">Auto-saves ~1s after you stop typing, then syncs to all agents.</div>
         </div>
       </div>
@@ -386,7 +392,8 @@ PRICE MATCHING
 - Match authorized retailer prices within 7 days. Excludes flash sales and clearance.
 
 CONTACT
-- Mon-Sun 7am-9pm ET. Response within 1 business day.`}];
+- Mon-Sun 7am-9pm ET. Response within 1 business day.`,info:''}];
+DEFAULTS.forEach(s=>{ if(s.info===undefined) s.info=''; });
 
 /* ═══ STORAGE ═══ */
 const DB={
@@ -421,13 +428,15 @@ const DB={
 };
 
 /* ═══ STATE ═══ */
-let stores=[], sel=0, tone="Warm and friendly", cases=[], saveTimer=null;
+let stores=[], sel=0, tone="Warm and friendly", cases=[], saveTimer=null, detailView='policy';
 let currentSummary=null, currentDone=[];
 
 const $=id=>document.getElementById(id);
 const agentEl=$('agentName'), syncBadge=$('syncBadge'), policyBadge=$('policyBadge'),
       policyNotice=$('policyNotice'), storeSelect=$('storeSelect'), storeList=$('storeList'),
-      policyText=$('policyText'), activeLabel=$('activeLabel'), newStoreName=$('newStoreName'),
+      policyText=$('policyText'), infoText=$('infoText'), detailSubtabs=$('detailSubtabs'),
+      infoNotice=$('infoNotice'), detailsHeader=$('detailsHeader'),
+      activeLabel=$('activeLabel'), newStoreName=$('newStoreName'),
       addStoreBtn=$('addStoreBtn'), addHint=$('addHint'), renameInput=$('renameInput'),
       renameBtn=$('renameBtn'), deleteBtn=$('deleteBtn'), emailEl=$('emailText'),
       nameEl=$('custName'), draftEl=$('draftText'), genBtn=$('genBtn'), saveBtn=$('saveBtn'),
@@ -589,6 +598,7 @@ function normalize(){
   stores.forEach(s=>{
     if(!s.addedBy){ s.addedBy='(default)'; s.addedAt=s.addedAt||null; }
     if(!s.editedBy){ s.editedBy=s.addedBy; s.editedAt=s.editedAt||s.addedAt||null; }
+    if(s.info===undefined) s.info='';
   });
   if(sel>=stores.length||sel<0) sel=0;
 }
@@ -601,16 +611,33 @@ function renderAll(){
   stores.forEach((s,i)=>{
     const d=document.createElement('div');
     d.className='store-item'+(i===sel?' sel':''); d.textContent=s.name;
-    d.addEventListener('click',()=>{ if(stores[sel]) stores[sel].policy=policyText.value; sel=i; renderAll(); });
+    d.addEventListener('click',()=>{
+      if(stores[sel]){ stores[sel].policy=policyText.value; stores[sel].info=infoText.value; }
+      sel=i; renderAll();
+    });
     storeList.appendChild(d);
   });
   const cur=stores[sel];
   activeLabel.textContent=cur.name;
   if(document.activeElement!==policyText) policyText.value=cur.policy||'';
+  if(document.activeElement!==infoText) infoText.value=cur.info||'';
   renameInput.placeholder='Rename "'+cur.name+'"…';
   deleteBtn.disabled=stores.length<=1;
   renderMeta();
 }
+function setDetailView(v){
+  detailView=v;
+  document.querySelectorAll('#detailSubtabs .tonePill').forEach(p=>p.classList.toggle('active',p.dataset.view===v));
+  policyText.style.display=(v==='policy')?'':'none';
+  infoText.style.display=(v==='info')?'':'none';
+  infoNotice.style.display=(v==='info')?'block':'none';
+  detailsHeader.firstChild.textContent=(v==='info'?'Store Info — ':'Policy — ');
+}
+detailSubtabs.addEventListener('click',e=>{
+  const p=e.target.closest('.tonePill'); if(!p) return;
+  if(stores[sel]){ stores[sel].policy=policyText.value; stores[sel].info=infoText.value; }
+  setDetailView(p.dataset.view);
+});
 async function persist(now,meta){
   clearTimeout(saveTimer); badge(policyBadge,'saving','Saving…');
   const go=async()=>{
@@ -621,7 +648,7 @@ async function persist(now,meta){
     try{ await DB.set('stores',JSON.stringify(stores),true);
       badge(policyBadge,'saved','✓ Saved & shared'); badge(syncBadge,'saved','✓ Synced');
       if(meta&&meta.type){
-        const act=meta.type==='add'?'policy_added':(meta.type==='delete'?'policy_deleted':'policy_edited');
+        const act=meta.type==='add'?'policy_added':(meta.type==='delete'?'policy_deleted':(meta.field==='info'?'info_edited':'policy_edited'));
         try{ window.logActivity(act,meta.name); }catch(e){}
       }
       renderMeta();
@@ -646,9 +673,10 @@ async function addStore(){
   const n=(newStoreName.value||'').trim();
   if(!n){ addHint.textContent='⚠ Enter a store name first.'; newStoreName.focus(); return; }
   if(stores.some(s=>s.name.toLowerCase()===n.toLowerCase())){ addHint.textContent='⚠ That store already exists.'; return; }
-  if(stores[sel]) stores[sel].policy=policyText.value;
+  if(stores[sel]){ stores[sel].policy=policyText.value; stores[sel].info=infoText.value; }
   const me=agentEl.value.trim()||'(unknown)', nowIso=new Date().toISOString();
   stores.push({name:n,policy:'STORE POLICY — '+n+'\n\nReturns:\n- \n\nShipping:\n- \n\nRefunds:\n- \n\nContact:\n- ',
+    info:'Store owner:\nWebsite:\nStore email:\nEmail password:\nCRM/subscription platform:\nCRM login:\nOther notes:\n',
     addedBy:me,addedAt:nowIso,editedBy:me,editedAt:nowIso});
   sel=stores.length-1; newStoreName.value='';
   addHint.textContent='✓ Added "'+n+'" — now fill in the policy on the right.';
@@ -669,7 +697,8 @@ deleteBtn.addEventListener('click',async()=>{
   const deletedName=stores[sel].name;
   stores.splice(sel,1); sel=0; renderAll(); await persist(true,{type:'delete',name:deletedName});
 });
-policyText.addEventListener('input',()=>{ if(!stores[sel]) return; stores[sel].policy=policyText.value; persist(false,{type:'edit',name:stores[sel].name}); });
+policyText.addEventListener('input',()=>{ if(!stores[sel]) return; stores[sel].policy=policyText.value; persist(false,{type:'edit',name:stores[sel].name,field:'policy'}); });
+infoText.addEventListener('input',()=>{ if(!stores[sel]) return; stores[sel].info=infoText.value; persist(false,{type:'edit',name:stores[sel].name,field:'info'}); });
 storeSelect.addEventListener('change',()=>{ sel=parseInt(storeSelect.value,10)||0; renderAll(); });
 toneRow.addEventListener('click',e=>{
   const p=e.target.closest('.tonePill'); if(!p) return;
