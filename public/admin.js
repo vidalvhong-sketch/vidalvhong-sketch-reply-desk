@@ -30,6 +30,9 @@ const ACTION_LABEL = {
   policy_edited: 'Edited a policy',
   policy_deleted: 'Deleted a policy',
   info_edited: 'Edited store info',
+  status_added: 'Added a case status',
+  status_edited: 'Edited a case status',
+  status_deleted: 'Deleted a case status',
   case_added: 'Saved a case',
   case_deleted: 'Deleted a case',
   account_reset: 'Reset an account to default',
@@ -169,9 +172,12 @@ async function loadCases(){
       const rows = a.cases.map(c=>{
         const s=c.summary||{};
         return '<tr><td>'+esc(c.timestamp||'')+'</td><td>'+esc(c.customer||'')+'</td>'+
-          '<td>'+esc(c.store||'')+'</td><td>'+esc(s.category||'')+'</td><td>'+esc(s.outcome||'')+'</td>'+
+          '<td>'+esc(c.store||'')+'</td><td>'+esc(c.status||'—')+'</td><td>'+esc(s.category||'')+'</td><td>'+esc(s.outcome||'')+'</td>'+
           '<td><details><summary class="muted" style="cursor:pointer;">View</summary>'+
-          '<div style="margin-top:8px;"><div class="muted" style="margin-bottom:4px;">Customer email</div>'+
+          '<div style="margin-top:8px;">'+
+          (c.history?('<div class="muted" style="margin-bottom:4px;">Previous correspondence</div>'+
+          '<div style="white-space:pre-wrap;font-family:\'Courier New\',monospace;font-size:12px;background:#f6f3ec;border:1px solid #d8d1bf;padding:8px;border-radius:2px;margin-bottom:8px;">'+esc(c.history)+'</div>'):'')+
+          '<div class="muted" style="margin-bottom:4px;">Customer email</div>'+
           '<div style="white-space:pre-wrap;font-family:\'Courier New\',monospace;font-size:12px;background:#f6f3ec;border:1px solid #d8d1bf;padding:8px;border-radius:2px;margin-bottom:8px;">'+esc(c.email||'')+'</div>'+
           '<div class="muted" style="margin-bottom:4px;">Draft reply</div>'+
           '<div style="white-space:pre-wrap;font-family:Georgia,serif;font-size:13px;background:#f6f3ec;border:1px solid #d8d1bf;padding:8px;border-radius:2px;">'+esc(c.draft||'')+'</div></div>'+
@@ -180,7 +186,7 @@ async function loadCases(){
       return '<div style="margin-bottom:16px;">'+
         '<div style="font-family:\'Courier New\',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#5a5346;margin-bottom:6px;">'+
         esc(a.name)+' <span class="muted">('+esc(a.username)+') — '+a.cases.length+' case(s)</span></div>'+
-        '<table><tr><th>Logged</th><th>Customer</th><th>Store</th><th>Category</th><th>Outcome</th><th></th></tr>'+rows+'</table></div>';
+        '<table><tr><th>Logged</th><th>Customer</th><th>Store</th><th>Status</th><th>Category</th><th>Outcome</th><th></th></tr>'+rows+'</table></div>';
     }).join('');
   }catch(e){
     box.className='muted'; box.textContent='Could not load cases: '+e.message;

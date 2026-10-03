@@ -41,7 +41,7 @@
   .grid.policies{grid-template-columns:270px 1fr;}
   @media(max-width:880px){.grid,.grid.policies{grid-template-columns:1fr;}}
   textarea{width:100%;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-family:var(--mono);font-size:12.5px;line-height:1.55;padding:11px;border-radius:2px;resize:vertical;}
-  #emailText{height:150px;} #draftText{height:290px;font-family:var(--serif);font-size:15px;} #policyText{height:355px;}
+  #emailText{height:150px;} #historyText{height:110px;} #draftText{height:290px;font-family:var(--serif);font-size:15px;} #policyText{height:355px;}
   label.small{display:block;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b6356;margin:0 0 6px;}
   input[type=text]{width:100%;border:1px solid var(--line);background:var(--paper);padding:8px 10px;font-size:13.5px;border-radius:2px;color:var(--ink);font-family:var(--sans);}
   select{width:100%;border:1px solid var(--line);background:var(--paper);padding:8px 10px;font-size:13px;border-radius:2px;color:var(--ink);font-family:var(--sans);}
@@ -78,6 +78,9 @@
   .store-item.sel{border-color:var(--accent);background:var(--accent-soft);font-weight:600;}
   .addRow{display:flex;gap:6px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line);}
   .addRow input{flex:1;}
+  .statusChip{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10.5px;padding:5px 6px 5px 10px;border:1px solid var(--line);border-radius:20px;background:var(--paper);color:#5a5346;}
+  .statusChip .x{cursor:pointer;color:#8a8270;font-weight:700;padding:0 3px;}
+  .statusChip .x:hover{color:var(--accent);}
 
   /* ── SUMMARY ── */
   .sum-empty{color:#8a8270;font-family:var(--mono);font-size:11.5px;text-align:center;padding:26px 10px;line-height:1.7;}
@@ -181,6 +184,7 @@
           <div class="body">
             <div class="field"><label class="small">Customer name (optional)</label><input type="text" id="custName" placeholder="e.g. Jordan"></div>
             <div class="field"><label class="small">Incoming email</label><textarea id="emailText" spellcheck="false" placeholder="Paste the customer's email here…"></textarea></div>
+            <div class="field"><label class="small">Previous correspondence (optional)</label><textarea id="historyText" spellcheck="false" placeholder="Paste earlier emails in this thread and what an agent already told the customer, so this reply stays consistent with the history…"></textarea></div>
             <label class="small">Tone</label>
             <div class="toneRow" id="toneRow">
               <span class="tonePill active" data-tone="Warm and friendly">Warm &amp; friendly</span>
@@ -188,6 +192,7 @@
               <span class="tonePill" data-tone="Apologetic and reassuring">Apologetic &amp; reassuring</span>
               <span class="tonePill" data-tone="Firm but polite (policy enforcement)">Firm but polite</span>
             </div>
+            <div class="field"><label class="small">Case status (optional)</label><select id="statusSelect"><option value="">— none —</option></select></div>
             <button class="btn accent" id="genBtn">Generate Draft</button>
           </div>
         </div>
@@ -239,6 +244,15 @@
   <!-- ══ POLICIES ══ -->
   <div id="tab-policies" style="display:none;">
     <div class="noticeBox" id="policyNotice"></div>
+    <div class="panel" style="margin-bottom:15px;">
+      <h2>Case Statuses <span class="badge neutral" id="statusBadge">—</span></h2>
+      <div class="body">
+        <div class="hint" style="margin-bottom:10px;">The tags agents can pick from on the Reply Desk (e.g. Hold, Cancelled, Refunded) so cases are labeled consistently. Saved with each case.</div>
+        <div class="row" id="statusChipList" style="margin-bottom:10px;"></div>
+        <div class="addRow"><input type="text" id="newStatusName" placeholder="New status…" maxlength="40"><button class="btn sm" id="addStatusBtn">Add</button></div>
+        <div class="hint" id="statusHint" style="margin-top:8px;">Type a name and press Add (or hit Enter).</div>
+      </div>
+    </div>
     <div class="grid policies">
       <div class="panel">
         <h2>Stores <span class="badge neutral" id="policyBadge">—</span></h2>
@@ -406,6 +420,8 @@ CONTACT
 - Mon-Sun 7am-9pm ET. Response within 1 business day.`,info:''}];
 DEFAULTS.forEach(s=>{ if(s.info===undefined) s.info=''; });
 
+const DEFAULT_STATUSES=["Hold","Subscription","Cancelled","Partial Refund","Refunded","Resolved","Escalated","Other"];
+
 /* ═══ STORAGE ═══ */
 const DB={
   ok:false, reason:'', mem:{},
@@ -440,7 +456,7 @@ const DB={
 
 /* ═══ STATE ═══ */
 let stores=[], sel=0, tone="Warm and friendly", cases=[], saveTimer=null, detailView='policy';
-let currentSummary=null, currentDone=[];
+let currentSummary=null, currentDone=[], statuses=[], myRole=null;
 
 const $=id=>document.getElementById(id);
 const agentEl=$('agentName'), syncBadge=$('syncBadge'), policyBadge=$('policyBadge'),
@@ -450,12 +466,24 @@ const agentEl=$('agentName'), syncBadge=$('syncBadge'), policyBadge=$('policyBad
       activeLabel=$('activeLabel'), newStoreName=$('newStoreName'),
       addStoreBtn=$('addStoreBtn'), addHint=$('addHint'), renameInput=$('renameInput'),
       renameBtn=$('renameBtn'), deleteBtn=$('deleteBtn'), emailEl=$('emailText'),
+      historyEl=$('historyText'), statusSelect=$('statusSelect'),
+      statusChipList=$('statusChipList'), newStatusName=$('newStatusName'),
+      addStatusBtn=$('addStatusBtn'), statusHint=$('statusHint'), statusBadge=$('statusBadge'),
       nameEl=$('custName'), draftEl=$('draftText'), genBtn=$('genBtn'), saveBtn=$('saveBtn'),
       copyBtn=$('copyBtn'), copiedTag=$('copiedTag'), errorBox=$('errorBox'), toneRow=$('toneRow'),
       csList=$('csList'), csEmpty=$('csEmpty'), caseCount=$('caseCount'), clearCasesBtn=$('clearCasesBtn'),
       diagLog=$('diagLog'), diagBadge=$('diagBadge'), runDiagBtn=$('runDiagBtn'),
       dumpBtn=$('dumpBtn'), resetBtn=$('resetBtn'), sumWrap=$('sumWrap'), flagBar=$('flagBar'),
       copySumBtn=$('copySumBtn'), sumCopied=$('sumCopied');
+
+function isAdminRole(r){ return r==='admin'||r==='owner'; }
+function statusChipClass(val){
+  const v=String(val||'').toLowerCase();
+  if(/cancel|escalat/.test(v)) return 'red';
+  if(/hold|partial/.test(v)) return 'amber';
+  if(/refund|resolv/.test(v)) return 'green';
+  return 'grey';
+}
 
 const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const ts=()=>new Date().toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
@@ -533,6 +561,7 @@ function renderSummary(s){
   } else flagBar.className='flagBar';
 
   sumWrap.innerHTML=`
+    ${statusSelect.value?`<div class="sec" style="margin-bottom:10px;"><span class="chip ${statusChipClass(statusSelect.value)}">${esc(statusSelect.value)}</span>${historyEl.value.trim()?' <span class="chip grey">History included</span>':''}</div>`:''}
     <div class="sec">
       <div class="sec-label">Email digest — what the customer sent</div>
       <div class="digest">${esc(s.emailSummary||s.request)}</div>
@@ -729,6 +758,47 @@ deleteBtn.addEventListener('click',async()=>{
 policyText.addEventListener('input',()=>{ if(!stores[sel]) return; stores[sel].policy=policyText.value; persist(false,{type:'edit',name:stores[sel].name,field:'policy'}); });
 infoText.addEventListener('input',()=>{ if(!stores[sel]) return; stores[sel].info=infoText.value; persist(false,{type:'edit',name:stores[sel].name,field:'info'}); });
 storeSelect.addEventListener('change',()=>{ sel=parseInt(storeSelect.value,10)||0; renderAll(); });
+
+/* ═══ CASE STATUSES ═══ */
+function renderStatuses(){
+  if(!Array.isArray(statuses)||!statuses.length) statuses=DEFAULT_STATUSES.slice();
+  const amAdmin=isAdminRole(myRole);
+  statusChipList.innerHTML=statuses.map((s,i)=>
+    '<span class="statusChip">'+esc(s)+(amAdmin?'<span class="x" data-del="'+i+'" title="Remove">×</span>':'')+'</span>'
+  ).join('')||'<span class="hint">No statuses yet.</span>';
+  const cur=statusSelect.value;
+  statusSelect.innerHTML='<option value="">— none —</option>'+statuses.map(s=>'<option value="'+esc(s)+'">'+esc(s)+'</option>').join('');
+  if(statuses.includes(cur)) statusSelect.value=cur;
+}
+async function persistStatuses(meta){
+  badge(statusBadge,'saving','Saving…');
+  try{
+    await DB.set('statuses',JSON.stringify(statuses),true);
+    badge(statusBadge,'saved','✓ Saved & shared');
+    if(meta&&meta.type){
+      const act=meta.type==='add'?'status_added':(meta.type==='delete'?'status_deleted':'status_edited');
+      try{ window.logActivity(act,meta.name); }catch(e){}
+    }
+  }catch(e){ badge(statusBadge,'error','⚠ '+(e.message||'Save failed')); }
+}
+async function addStatusFn(){
+  const n=(newStatusName.value||'').trim();
+  if(!n){ statusHint.textContent='⚠ Enter a status name first.'; newStatusName.focus(); return; }
+  if(statuses.some(s=>s.toLowerCase()===n.toLowerCase())){ statusHint.textContent='⚠ That status already exists.'; return; }
+  statuses.push(n); newStatusName.value='';
+  statusHint.textContent='✓ Added "'+n+'".';
+  renderStatuses(); await persistStatuses({type:'add',name:n});
+}
+addStatusBtn.addEventListener('click',addStatusFn);
+newStatusName.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); addStatusFn(); }});
+statusChipList.addEventListener('click',async e=>{
+  const x=e.target.closest('[data-del]'); if(!x) return;
+  const i=parseInt(x.getAttribute('data-del'),10);
+  const removed=statuses[i];
+  statuses.splice(i,1);
+  renderStatuses(); await persistStatuses({type:'delete',name:removed});
+});
+
 toneRow.addEventListener('click',e=>{
   const p=e.target.closest('.tonePill'); if(!p) return;
   document.querySelectorAll('.tonePill').forEach(x=>x.classList.remove('active'));
@@ -806,6 +876,7 @@ function parseGenResponse(txt){
 /* ═══ GENERATE ═══ */
 genBtn.addEventListener('click',async()=>{
   const email=emailEl.value.trim(), cust=nameEl.value.trim(), agent=agentEl.value.trim(), st=stores[sel];
+  const history=historyEl.value.trim(), status=statusSelect.value;
   if(!agent){ setError('Enter your agent name (top right) first.'); return; }
   if(!email){ setError("Paste the customer's email before generating."); return; }
   setError(null); genBtn.disabled=true; genBtn.innerHTML='<span class="spinner"></span>Drafting…';
@@ -819,7 +890,7 @@ Reply rules:
 - Base every policy claim strictly on the STORE POLICY below. Never invent policy details.
 - If something isn't covered, say so honestly and offer to escalate.
 - Tone: ${tone}. Address the customer by name if given. Keep it focused and concise.
-- Sign off as "${agent} — ${st.name} Support Team".
+${status?`- The case status is "${status}" — make the reply's language clear and exact about that status (e.g. explain plainly if something is on hold, already cancelled, or already refunded, rather than vaguely).\n`:''}${history?`- PREVIOUS CORRESPONDENCE is provided below. Read it first: stay consistent with whatever the agent already told this customer, don't contradict or needlessly repeat earlier promises, and build on that context naturally.\n`:''}- Sign off as "${agent} — ${st.name} Support Team".
 
 Return your response in EXACTLY this two-section format — no markdown fences, no commentary before, between, or after the sections, and no other text anywhere:
 
@@ -847,7 +918,12 @@ STORE POLICY:
 ${st.policy}`;
 
   const usr=`Customer name: ${cust||'(not given — use a friendly generic greeting)'}
-
+${status?`Case status: ${status}\n`:''}${history?`
+PREVIOUS CORRESPONDENCE (earlier emails in this thread / what the agent already told the customer):
+"""
+${history}
+"""
+`:''}
 Customer email:
 """
 ${email}
@@ -891,7 +967,8 @@ copyBtn.addEventListener('click',async()=>{
 saveBtn.addEventListener('click',async()=>{
   const d=draftEl.value.trim(); if(!d) return;
   cases.unshift({id:Date.now(),agent:agentEl.value.trim()||'(unnamed)',store:stores[sel].name,
-    customer:nameEl.value.trim()||'(unnamed)',tone,email:emailEl.value.trim(),draft:d,
+    customer:nameEl.value.trim()||'(unnamed)',tone,email:emailEl.value.trim(),
+    history:historyEl.value.trim(),status:statusSelect.value,draft:d,
     summary:currentSummary,done:currentDone.slice(),timestamp:ts(),createdAt:new Date().toISOString()});
   try{ await DB.set('cases',JSON.stringify(cases),false); }catch(e){}
   renderCases(); saveBtn.disabled=true;
@@ -905,6 +982,7 @@ function caseSummaryHTML(c){
   const steps=asArray(s.agentProcess);
   const done=Array.isArray(c.done)?c.done:steps.map(()=>false);
   return `
+    ${c.status?`<div class="sec" style="margin-bottom:10px;"><span class="chip ${statusChipClass(c.status)}">${esc(c.status)}</span></div>`:''}
     <div class="sec"><div class="sec-label">Email digest</div><div class="digest">${esc(s.emailSummary||s.request)}</div></div>
     <div class="sec"><div class="sec-label">Classification</div>
       <div class="sum-grid">
@@ -931,7 +1009,8 @@ function renderCases(){
     const s=c.summary;
     const steps=s?asArray(s.agentProcess):[];
     const done=Array.isArray(c.done)?c.done.filter(Boolean).length:0;
-    const chips=(s?`<span class="chip ${chipFor('outcome',s.outcome)}">${esc(s.outcome)}</span>`:'<span class="chip grey">No summary</span>')+
+    const chips=(c.status?`<span class="chip ${statusChipClass(c.status)}">${esc(c.status)}</span> `:'')+
+      (s?`<span class="chip ${chipFor('outcome',s.outcome)}">${esc(s.outcome)}</span>`:'<span class="chip grey">No summary</span>')+
       (steps.length?` <span class="chip ${done===steps.length?'green':'grey'}">${done}/${steps.length} steps</span>`:'');
     const el=document.createElement('div'); el.className='cs-card';
     el.innerHTML='<div class="cs-head"><div><div class="cs-title">Case #'+(cases.length-i)+' — '+esc(c.customer)+' @ '+esc(c.store)+'</div>'+
@@ -939,6 +1018,7 @@ function renderCases(){
       '<div class="row" style="gap:6px;">'+chips+'</div></div>'+
       '<div class="cs-body" id="csb-'+c.id+'">'+caseSummaryHTML(c)+
       '<div class="sec"><div class="sec-label">Customer email</div><div class="cs-text">'+esc(c.email)+'</div></div>'+
+      (c.history?'<div class="sec"><div class="sec-label">Previous correspondence</div><div class="cs-text">'+esc(c.history)+'</div></div>':'')+
       '<div class="sec" style="margin-bottom:0;"><div class="sec-label">Draft reply</div><div class="cs-reply">'+esc(c.draft)+'</div></div>'+
       '<div class="cs-foot"><button class="btn secondary sm" data-sum="'+c.id+'">Copy Summary</button>'+
       '<button class="btn secondary sm" data-copy="'+c.id+'">Copy Reply</button>'+
@@ -1151,12 +1231,18 @@ resetBtn.addEventListener('click',async()=>{
 (async()=>{
   badge(syncBadge,'saving','Connecting…');
   await DB.probe();
+  const me=window.ME_PROMISE?await window.ME_PROMISE.catch(()=>null):null;
+  myRole=me?me.role:null;
   const raw=await DB.get('stores',true);
   if(raw){ try{ stores=JSON.parse(raw); }catch(e){ stores=JSON.parse(JSON.stringify(DEFAULTS)); } }
   else stores=JSON.parse(JSON.stringify(DEFAULTS));
   normalize();
+  const rawStatuses=await DB.get('statuses',true);
+  if(rawStatuses){ try{ statuses=JSON.parse(rawStatuses); if(!Array.isArray(statuses)) statuses=DEFAULT_STATUSES.slice(); }catch(e){ statuses=DEFAULT_STATUSES.slice(); } }
+  else statuses=DEFAULT_STATUSES.slice();
   if(DB.ok){
     if(!raw){ try{ await DB.set('stores',JSON.stringify(stores),true); }catch(e){} }
+    if(!rawStatuses){ try{ await DB.set('statuses',JSON.stringify(statuses),true); }catch(e){} }
     badge(syncBadge,'saved','✓ Synced'); badge(policyBadge,'saved','✓ Shared');
     showNotice('ok','🌐 Shared across all agents','Edits here save automatically and reach every agent using this link.');
   } else {
@@ -1166,10 +1252,11 @@ resetBtn.addEventListener('click',async()=>{
   const cs=await DB.get('cases',false);
   if(cs){ try{ cases=JSON.parse(cs); }catch(e){ cases=[]; } }
   const an=await DB.get('agentName',false); if(an) agentEl.value=an;
-  renderAll(); renderCases(); renderSummary(null);
+  renderAll(); renderCases(); renderSummary(null); renderStatuses();
 })().catch(e=>{
   badge(syncBadge,'error','⚠ Init error');
   stores=JSON.parse(JSON.stringify(DEFAULTS)); sel=0; renderAll(); renderCases();
+  statuses=DEFAULT_STATUSES.slice(); renderStatuses();
 });
 </script>
 </body>

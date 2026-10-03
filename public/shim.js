@@ -101,11 +101,11 @@
     // Policy editing is admin/owner. Agents get a read-only view of
     // store policies.
     if (!isAdminRole(me.role)) {
-      ['policyText', 'newStoreName', 'renameInput'].forEach(id => {
+      ['policyText', 'infoText', 'newStoreName', 'renameInput', 'newStatusName'].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.readOnly = true; el.disabled = true; }
       });
-      ['addStoreBtn', 'renameBtn', 'deleteBtn'].forEach(id => {
+      ['addStoreBtn', 'renameBtn', 'deleteBtn', 'addStatusBtn'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = true;
       });
